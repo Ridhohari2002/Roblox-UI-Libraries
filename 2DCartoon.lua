@@ -746,6 +746,530 @@ function CartoonUI.CreateWindow(config)
     end
 
     -- ========================================================================
+    -- POP-UP UI: ACTIVE CARDS SCANNER & STEALER
+    -- ========================================================================
+    function WindowHandler:CreateCardsPopup(popupConfig)
+        popupConfig = popupConfig or {}
+        local popupTitle = popupConfig.Title or "Active Cards Stealer"
+        local cardsFolder = popupConfig.CardsFolder or workspace:FindFirstChild("ActiveCards") or workspace
+        local onStealCallback = popupConfig.OnSteal or function(card, isStealing, data) end
+        local onCardClick = popupConfig.OnCardClick or function(card, data) end
+        local customRarities = popupConfig.Rarities or {"All", "Divine", "Mythic", "Legendary", "Epic", "Rare", "Common"}
+
+        local RarityInfo = {
+            ["Divine"] = { Color = Color3.fromRGB(255, 215, 0), Dark = Color3.fromRGB(210, 165, 0), Icon = "👑" },
+            ["Mythic"] = { Color = Color3.fromRGB(255, 65, 115), Dark = Color3.fromRGB(200, 40, 85), Icon = "🔥" },
+            ["Legendary"] = { Color = Color3.fromRGB(255, 155, 45), Dark = Color3.fromRGB(210, 115, 20), Icon = "⚡" },
+            ["Epic"] = { Color = Color3.fromRGB(165, 95, 255), Dark = Color3.fromRGB(125, 60, 210), Icon = "🔮" },
+            ["Rare"] = { Color = Color3.fromRGB(50, 195, 255), Dark = Color3.fromRGB(25, 150, 210), Icon = "💎" },
+            ["Common"] = { Color = Color3.fromRGB(160, 175, 195), Dark = Color3.fromRGB(120, 135, 155), Icon = "⚪" },
+            ["Default"] = { Color = Color3.fromRGB(142, 108, 239), Dark = Color3.fromRGB(114, 82, 204), Icon = "★" }
+        }
+
+        local function getRarity(rarityName)
+            if not rarityName then return RarityInfo["Default"] end
+            for k, v in pairs(RarityInfo) do
+                if string.lower(k) == string.lower(tostring(rarityName)) then
+                    return v
+                end
+            end
+            return RarityInfo["Default"]
+        end
+
+        local popupSize = UDim2.new(0, 520, 0, 440)
+        local isPopupOpen = false
+        local activeRarityFilter = "All"
+        local searchKeyword = ""
+        local activeStealMap = {} -- [cardInstance] = boolean
+
+        -- Bayangan Pop-up
+        local PopupShadow = Instance.new("Frame")
+        PopupShadow.Name = "CardsPopupShadow"
+        PopupShadow.Size = popupSize
+        PopupShadow.Position = UDim2.new(0.5, -popupSize.X.Offset / 2 + 6, 0.5, -popupSize.Y.Offset / 2 + 8)
+        PopupShadow.BackgroundColor3 = Theme.Outline
+        PopupShadow.BorderSizePixel = 0
+        PopupShadow.Visible = false
+        addCorner(PopupShadow, 20)
+        PopupShadow.Parent = ScreenGui
+
+        -- Frame Pop-up Utama
+        local PopupFrame = Instance.new("Frame")
+        PopupFrame.Name = "CardsPopupFrame"
+        PopupFrame.Size = popupSize
+        PopupFrame.Position = UDim2.new(0.5, -popupSize.X.Offset / 2, 0.5, -popupSize.Y.Offset / 2)
+        PopupFrame.BackgroundColor3 = Theme.Background
+        PopupFrame.BorderSizePixel = 0
+        PopupFrame.Visible = false
+        PopupFrame.ClipsDescendants = false
+        addCorner(PopupFrame, 18)
+        addCartoonStroke(PopupFrame, 3.5, Theme.Outline)
+        PopupFrame.Parent = ScreenGui
+
+        PopupFrame:GetPropertyChangedSignal("Position"):Connect(function()
+            PopupShadow.Position = UDim2.new(
+                PopupFrame.Position.X.Scale,
+                PopupFrame.Position.X.Offset + 6,
+                PopupFrame.Position.Y.Scale,
+                PopupFrame.Position.Y.Offset + 8
+            )
+        end)
+        PopupFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+            PopupShadow.Visible = PopupFrame.Visible
+        end)
+
+        makeDraggable(PopupFrame)
+
+        -- Header Pop-up
+        local PopHeader = Instance.new("Frame")
+        PopHeader.Size = UDim2.new(1, 0, 0, 52)
+        PopHeader.BackgroundColor3 = Theme.Sidebar
+        PopHeader.BorderSizePixel = 0
+        addCorner(PopHeader, 18)
+        PopHeader.Parent = PopupFrame
+
+        local PopHeaderFix = Instance.new("Frame")
+        PopHeaderFix.Size = UDim2.new(1, 0, 0, 14)
+        PopHeaderFix.Position = UDim2.new(0, 0, 1, -14)
+        PopHeaderFix.BackgroundColor3 = Theme.Sidebar
+        PopHeaderFix.BorderSizePixel = 0
+        PopHeaderFix.Parent = PopHeader
+
+        local PopHeaderLine = Instance.new("Frame")
+        PopHeaderLine.Size = UDim2.new(1, 0, 0, 3)
+        PopHeaderLine.Position = UDim2.new(0, 0, 1, 0)
+        PopHeaderLine.BackgroundColor3 = Theme.Outline
+        PopHeaderLine.BorderSizePixel = 0
+        PopHeaderLine.Parent = PopHeader
+
+        local PopLogoBadge = Instance.new("Frame")
+        PopLogoBadge.Size = UDim2.new(0, 34, 0, 34)
+        PopLogoBadge.Position = UDim2.new(0, 12, 0.5, -17)
+        PopLogoBadge.BackgroundColor3 = Theme.Purple
+        PopLogoBadge.BorderSizePixel = 0
+        addCorner(PopLogoBadge, 10)
+        addCartoonStroke(PopLogoBadge, 2, Theme.Outline)
+        PopLogoBadge.Parent = PopHeader
+
+        local PopLogoEmoji = Instance.new("TextLabel")
+        PopLogoEmoji.Size = UDim2.new(1, 0, 1, 0)
+        PopLogoEmoji.BackgroundTransparency = 1
+        PopLogoEmoji.Font = Theme.FontBold
+        PopLogoEmoji.Text = "🃏"
+        PopLogoEmoji.TextSize = 20
+        PopLogoEmoji.Parent = PopLogoBadge
+
+        local PopTitle = Instance.new("TextLabel")
+        PopTitle.Size = UDim2.new(0, 220, 0, 20)
+        PopTitle.Position = UDim2.new(0, 54, 0, 8)
+        PopTitle.BackgroundTransparency = 1
+        PopTitle.Font = Theme.FontBold
+        PopTitle.Text = popupTitle
+        PopTitle.TextColor3 = Theme.TextDark
+        PopTitle.TextSize = 16
+        PopTitle.TextXAlignment = Enum.TextXAlignment.Left
+        PopTitle.Parent = PopHeader
+
+        local PopCardCount = Instance.new("TextLabel")
+        PopCardCount.Size = UDim2.new(0, 220, 0, 16)
+        PopCardCount.Position = UDim2.new(0, 54, 0, 28)
+        PopCardCount.BackgroundTransparency = 1
+        PopCardCount.Font = Theme.FontRegular
+        PopCardCount.Text = "0 Cards Active"
+        PopCardCount.TextColor3 = Theme.TextMuted
+        PopCardCount.TextSize = 11
+        PopCardCount.TextXAlignment = Enum.TextXAlignment.Left
+        PopCardCount.Parent = PopHeader
+
+        -- Tombol Refresh & Close di Header Pop-up
+        local PopControls = Instance.new("Frame")
+        PopControls.Size = UDim2.new(0, 80, 0, 32)
+        PopControls.Position = UDim2.new(1, -90, 0.5, -16)
+        PopControls.BackgroundTransparency = 1
+        PopControls.Parent = PopHeader
+
+        local PopControlsLayout = Instance.new("UIListLayout")
+        PopControlsLayout.FillDirection = Enum.FillDirection.Horizontal
+        PopControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        PopControlsLayout.Padding = UDim.new(0, 6)
+        PopControlsLayout.Parent = PopControls
+
+        local RefreshBtn = Instance.new("TextButton")
+        RefreshBtn.Size = UDim2.new(0, 32, 0, 32)
+        RefreshBtn.BackgroundColor3 = Theme.Secondary
+        RefreshBtn.Font = Theme.FontBold
+        RefreshBtn.Text = "🔄"
+        RefreshBtn.TextSize = 16
+        RefreshBtn.AutoButtonColor = false
+        addCorner(RefreshBtn, 10)
+        addCartoonStroke(RefreshBtn, 2, Theme.Outline)
+        RefreshBtn.Parent = PopControls
+
+        local PopCloseBtn = Instance.new("TextButton")
+        PopCloseBtn.Size = UDim2.new(0, 32, 0, 32)
+        PopCloseBtn.BackgroundColor3 = Theme.Primary
+        PopCloseBtn.Font = Theme.FontBold
+        PopCloseBtn.Text = "✕"
+        PopCloseBtn.TextColor3 = Color3.new(1, 1, 1)
+        PopCloseBtn.TextSize = 16
+        PopCloseBtn.AutoButtonColor = false
+        addCorner(PopCloseBtn, 10)
+        addCartoonStroke(PopCloseBtn, 2, Theme.Outline)
+        PopCloseBtn.Parent = PopControls
+
+        -- Filter & Search Area
+        local FilterSection = Instance.new("Frame")
+        FilterSection.Size = UDim2.new(1, -24, 0, 72)
+        FilterSection.Position = UDim2.new(0, 12, 0, 60)
+        FilterSection.BackgroundTransparency = 1
+        FilterSection.Parent = PopupFrame
+
+        -- Row 1: Rarity Filter Pills (Scrollable)
+        local RarityScroll = Instance.new("ScrollingFrame")
+        RarityScroll.Size = UDim2.new(1, 0, 0, 32)
+        RarityScroll.Position = UDim2.new(0, 0, 0, 0)
+        RarityScroll.BackgroundTransparency = 1
+        RarityScroll.ScrollBarThickness = 0
+        RarityScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        RarityScroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+        RarityScroll.Parent = FilterSection
+
+        local RarityLayout = Instance.new("UIListLayout")
+        RarityLayout.FillDirection = Enum.FillDirection.Horizontal
+        RarityLayout.Padding = UDim.new(0, 6)
+        RarityLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        RarityLayout.Parent = RarityScroll
+
+        -- Row 2: Search Input
+        local SearchBox = Instance.new("TextBox")
+        SearchBox.Size = UDim2.new(1, 0, 0, 32)
+        SearchBox.Position = UDim2.new(0, 0, 0, 38)
+        SearchBox.BackgroundColor3 = Theme.CardBg
+        SearchBox.BorderSizePixel = 0
+        SearchBox.Font = Theme.FontRegular
+        SearchBox.PlaceholderText = "🔍 Cari nama kartu (contoh: Puskas)..."
+        SearchBox.PlaceholderColor3 = Theme.TextMuted
+        SearchBox.Text = ""
+        SearchBox.TextColor3 = Theme.TextDark
+        SearchBox.TextSize = 12
+        SearchBox.ClearTextOnFocus = false
+        addCorner(SearchBox, 10)
+        local searchStroke = addCartoonStroke(SearchBox, 2, Theme.Outline)
+        SearchBox.Parent = FilterSection
+
+        SearchBox.Focused:Connect(function()
+            tween(searchStroke, TweenInfo.new(0.2), { Color = Theme.Primary, Thickness = 2.5 })
+        end)
+        SearchBox.FocusLost:Connect(function()
+            tween(searchStroke, TweenInfo.new(0.2), { Color = Theme.Outline, Thickness = 2 })
+        end)
+
+        -- Container List Kartu (Cards Scroll)
+        local CardsScroll = Instance.new("ScrollingFrame")
+        CardsScroll.Name = "CardsScroll"
+        CardsScroll.Size = UDim2.new(1, -24, 1, -144)
+        CardsScroll.Position = UDim2.new(0, 12, 0, 136)
+        CardsScroll.BackgroundTransparency = 1
+        CardsScroll.BorderSizePixel = 0
+        CardsScroll.ScrollBarThickness = 5
+        CardsScroll.ScrollBarImageColor3 = Theme.Outline
+        CardsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        CardsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        CardsScroll.Parent = PopupFrame
+
+        local CardsLayout = Instance.new("UIListLayout")
+        CardsLayout.Padding = UDim.new(0, 8)
+        CardsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        CardsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        CardsLayout.Parent = CardsScroll
+
+        local CardsPadding = Instance.new("UIPadding")
+        CardsPadding.PaddingBottom = UDim.new(0, 10)
+        CardsPadding.Parent = CardsScroll
+
+        local filterButtons = {}
+        local renderCardsList
+
+        -- Inisialisasi Filter Pills
+        for i, rarityName in ipairs(customRarities) do
+            local rInfo = getRarity(rarityName)
+            local pill = Instance.new("TextButton")
+            pill.Size = UDim2.new(0, 80, 0, 30)
+            pill.BackgroundColor3 = (rarityName == "All") and Theme.Yellow or Theme.CardBg
+            pill.BorderSizePixel = 0
+            pill.AutoButtonColor = false
+            pill.Font = Theme.FontBold
+            pill.Text = (rarityName == "All" and "🌈 All" or (rInfo.Icon .. " " .. rarityName))
+            pill.TextColor3 = Theme.TextDark
+            pill.TextSize = 11
+            pill.LayoutOrder = i
+            addCorner(pill, 8)
+            local pillStroke = addCartoonStroke(pill, 1.8, Theme.Outline)
+            pill.Parent = RarityScroll
+
+            filterButtons[rarityName] = { Button = pill, Stroke = pillStroke, Info = rInfo }
+
+            pill.MouseButton1Click:Connect(function()
+                activeRarityFilter = rarityName
+                for name, data in pairs(filterButtons) do
+                    if name == activeRarityFilter then
+                        tween(data.Button, TweenInfo.new(0.2), { BackgroundColor3 = Theme.Yellow })
+                        data.Stroke.Thickness = 2.5
+                    else
+                        tween(data.Button, TweenInfo.new(0.2), { BackgroundColor3 = Theme.CardBg })
+                        data.Stroke.Thickness = 1.8
+                    end
+                end
+                renderCardsList()
+            end)
+        end
+
+        -- Fungsi Render Card Item
+        renderCardsList = function()
+            for _, child in pairs(CardsScroll:GetChildren()) do
+                if child:IsA("Frame") then
+                    child:Destroy()
+                end
+            end
+
+            local children = {}
+            if cardsFolder and cardsFolder.Parent then
+                local success, items = pcall(function() return cardsFolder:GetChildren() end)
+                if success and items then
+                    children = items
+                end
+            end
+
+            local matchCount = 0
+            local totalCount = #children
+
+            for _, card in ipairs(children) do
+                local displayName = card:GetAttribute("DisplayName") or card.Name
+                local originalName = card:GetAttribute("OriginalName") or displayName
+                local rarity = card:GetAttribute("Rarity") or "Common"
+                local level = card:GetAttribute("Level") or 1
+                local mutation = card:GetAttribute("Mutation") or "Normal"
+
+                local passRarity = (activeRarityFilter == "All") or (string.lower(rarity) == string.lower(activeRarityFilter))
+                local passKeyword = true
+                if searchKeyword ~= "" then
+                    local kw = string.lower(searchKeyword)
+                    passKeyword = string.find(string.lower(displayName), kw) or string.find(string.lower(originalName), kw) or string.find(string.lower(rarity), kw)
+                end
+
+                if passRarity and passKeyword then
+                    matchCount = matchCount + 1
+                    local rInfo = getRarity(rarity)
+
+                    local CardRow = Instance.new("Frame")
+                    CardRow.Name = "Card_" .. displayName
+                    CardRow.Size = UDim2.new(1, 0, 0, 60)
+                    CardRow.BackgroundColor3 = Theme.CardBg
+                    CardRow.BorderSizePixel = 0
+                    addCorner(CardRow, 12)
+                    addCartoonStroke(CardRow, 2, Theme.Outline)
+                    CardRow.Parent = CardsScroll
+
+                    local rowShadow = Instance.new("Frame")
+                    rowShadow.Size = UDim2.new(1, 0, 0, 4)
+                    rowShadow.Position = UDim2.new(0, 0, 1, -4)
+                    rowShadow.BackgroundColor3 = Theme.CardDark
+                    rowShadow.BorderSizePixel = 0
+                    addCorner(rowShadow, 12)
+                    rowShadow.Parent = CardRow
+
+                    local IconBox = Instance.new("Frame")
+                    IconBox.Size = UDim2.new(0, 42, 0, 42)
+                    IconBox.Position = UDim2.new(0, 8, 0.5, -21)
+                    IconBox.BackgroundColor3 = rInfo.Color
+                    IconBox.BorderSizePixel = 0
+                    addCorner(IconBox, 10)
+                    addCartoonStroke(IconBox, 1.8, Theme.Outline)
+                    IconBox.Parent = CardRow
+
+                    local IconText = Instance.new("TextLabel")
+                    IconText.Size = UDim2.new(1, 0, 0.6, 0)
+                    IconText.BackgroundTransparency = 1
+                    IconText.Font = Theme.FontBold
+                    IconText.Text = rInfo.Icon
+                    IconText.TextSize = 18
+                    IconText.Parent = IconBox
+
+                    local LvBadge = Instance.new("TextLabel")
+                    LvBadge.Size = UDim2.new(1, 0, 0.4, 0)
+                    LvBadge.Position = UDim2.new(0, 0, 0.6, 0)
+                    LvBadge.BackgroundTransparency = 1
+                    LvBadge.Font = Theme.FontBold
+                    LvBadge.Text = "Lv." .. tostring(level)
+                    LvBadge.TextColor3 = Theme.Outline
+                    LvBadge.TextSize = 10
+                    LvBadge.Parent = IconBox
+
+                    local NameLabel = Instance.new("TextLabel")
+                    NameLabel.Size = UDim2.new(0.48, 0, 0, 20)
+                    NameLabel.Position = UDim2.new(0, 58, 0, 9)
+                    NameLabel.BackgroundTransparency = 1
+                    NameLabel.Font = Theme.FontBold
+                    NameLabel.Text = displayName
+                    NameLabel.TextColor3 = Theme.TextDark
+                    NameLabel.TextSize = 14
+                    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    NameLabel.Parent = CardRow
+
+                    local SubLabel = Instance.new("TextLabel")
+                    SubLabel.Size = UDim2.new(0.48, 0, 0, 16)
+                    SubLabel.Position = UDim2.new(0, 58, 0, 31)
+                    SubLabel.BackgroundTransparency = 1
+                    SubLabel.Font = Theme.FontRegular
+                    SubLabel.Text = rarity .. " • " .. mutation
+                    SubLabel.TextColor3 = Theme.TextMuted
+                    SubLabel.TextSize = 11
+                    SubLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    SubLabel.Parent = CardRow
+
+                    local RarityPill = Instance.new("TextLabel")
+                    RarityPill.Size = UDim2.new(0, 75, 0, 20)
+                    RarityPill.Position = UDim2.new(1, -195, 0.5, -10)
+                    RarityPill.BackgroundColor3 = rInfo.Color
+                    RarityPill.BorderSizePixel = 0
+                    RarityPill.Font = Theme.FontBold
+                    RarityPill.Text = rarity
+                    RarityPill.TextColor3 = Theme.Outline
+                    RarityPill.TextSize = 10
+                    addCorner(RarityPill, 6)
+                    addCartoonStroke(RarityPill, 1.5, Theme.Outline)
+                    RarityPill.Parent = CardRow
+
+                    local isStealing = activeStealMap[card] or false
+
+                    local StealBtnContainer = Instance.new("Frame")
+                    StealBtnContainer.Size = UDim2.new(0, 105, 0, 36)
+                    StealBtnContainer.Position = UDim2.new(1, -114, 0.5, -18)
+                    StealBtnContainer.BackgroundTransparency = 1
+                    StealBtnContainer.Parent = CardRow
+
+                    local StealBtnShadow = Instance.new("Frame")
+                    StealBtnShadow.Size = UDim2.new(1, 0, 0, 32)
+                    StealBtnShadow.Position = UDim2.new(0, 0, 0, 4)
+                    StealBtnShadow.BackgroundColor3 = Theme.Outline
+                    StealBtnShadow.BorderSizePixel = 0
+                    addCorner(StealBtnShadow, 10)
+                    StealBtnShadow.Parent = StealBtnContainer
+
+                    local StealBtn = Instance.new("TextButton")
+                    StealBtn.Size = UDim2.new(1, 0, 0, 32)
+                    StealBtn.BackgroundColor3 = isStealing and Theme.Primary or Theme.Secondary
+                    StealBtn.BorderSizePixel = 0
+                    StealBtn.AutoButtonColor = false
+                    StealBtn.Font = Theme.FontBold
+                    StealBtn.Text = isStealing and "STEALING..." or "STEAL"
+                    StealBtn.TextColor3 = isStealing and Color3.new(1, 1, 1) or Theme.Outline
+                    StealBtn.TextSize = 12
+                    addCorner(StealBtn, 10)
+                    addCartoonStroke(StealBtn, 2, Theme.Outline)
+                    StealBtn.Parent = StealBtnContainer
+
+                    StealBtn.MouseButton1Click:Connect(function()
+                        isStealing = not isStealing
+                        activeStealMap[card] = isStealing
+
+                        if isStealing then
+                            tween(StealBtn, TweenInfo.new(0.2), { BackgroundColor3 = Theme.Primary })
+                            StealBtn.Text = "STEALING..."
+                            StealBtn.TextColor3 = Color3.new(1, 1, 1)
+                            notify("Steal Dimulai", "Mencuri kartu: " .. displayName, 2, Theme.Primary)
+                        else
+                            tween(StealBtn, TweenInfo.new(0.2), { BackgroundColor3 = Theme.Secondary })
+                            StealBtn.Text = "STEAL"
+                            StealBtn.TextColor3 = Theme.Outline
+                            notify("Steal Berhenti", "Berhenti mencuri: " .. displayName, 2, Theme.Secondary)
+                        end
+
+                        pcall(onStealCallback, card, isStealing, {
+                            DisplayName = displayName,
+                            OriginalName = originalName,
+                            Rarity = rarity,
+                            Level = level,
+                            Mutation = mutation
+                        })
+                    end)
+                end
+            end
+
+            PopCardCount.Text = tostring(matchCount) .. " Cards (" .. tostring(totalCount) .. " Total di Game)"
+        end
+
+        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            searchKeyword = SearchBox.Text
+            renderCardsList()
+        end)
+
+        RefreshBtn.MouseButton1Click:Connect(function()
+            renderCardsList()
+            notify("Cards Refreshed", "Daftar kartu aktif berhasil diperbarui!", 2, Theme.Secondary)
+        end)
+
+        if cardsFolder and cardsFolder.Parent then
+            cardsFolder.ChildAdded:Connect(function()
+                if isPopupOpen then
+                    task.delay(0.1, renderCardsList)
+                end
+            end)
+            cardsFolder.ChildRemoved:Connect(function(removedChild)
+                activeStealMap[removedChild] = nil
+                if isPopupOpen then
+                    task.delay(0.1, renderCardsList)
+                end
+            end)
+        end
+
+        local function openPopup()
+            isPopupOpen = true
+            PopupFrame.Visible = true
+            PopupShadow.Visible = true
+            PopupFrame.Size = UDim2.new(0, 0, 0, 0)
+            PopupShadow.Size = UDim2.new(0, 0, 0, 0)
+
+            tween(PopupFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = popupSize
+            })
+            tween(PopupShadow, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = popupSize
+            })
+            renderCardsList()
+        end
+
+        local function closePopup()
+            isPopupOpen = false
+            local t = tween(PopupFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 0, 0, 0)
+            })
+            tween(PopupShadow, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 0, 0, 0)
+            })
+            t.Completed:Connect(function()
+                if not isPopupOpen then
+                    PopupFrame.Visible = false
+                    PopupShadow.Visible = false
+                end
+            end)
+        end
+
+        PopCloseBtn.MouseButton1Click:Connect(closePopup)
+
+        return {
+            Open = openPopup,
+            Close = closePopup,
+            Toggle = function()
+                if isPopupOpen then closePopup() else openPopup() end
+            end,
+            Refresh = renderCardsList,
+            IsOpen = function() return isPopupOpen end,
+            GetActiveSteals = function() return activeStealMap end
+        }
+    end
+
+    -- ========================================================================
     -- TAB CREATION
     -- ========================================================================
     function WindowHandler:CreateTab(tabName, iconEmoji)
