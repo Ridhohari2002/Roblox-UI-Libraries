@@ -162,6 +162,59 @@ end
 local CartoonUI = {}
 CartoonUI.__index = CartoonUI
 
+-- Custom Cursor Manager
+local ActiveCustomCursor = nil
+function CartoonUI.SetCursor(cursorConfig)
+    if not cursorConfig then
+        if ActiveCustomCursor then
+            ActiveCustomCursor:Destroy()
+            ActiveCustomCursor = nil
+            UserInputService.OverrideMouseIconBehavior = Enum.OverrideMouseIconBehavior.None
+        end
+        return
+    end
+
+    local cursorIcon = type(cursorConfig) == "string" and cursorConfig or (cursorConfig.Icon or "🎯")
+    local cursorSize = (type(cursorConfig) == "table" and cursorConfig.Size) or 24
+    local cursorColor = (type(cursorConfig) == "table" and cursorConfig.Color) or Color3.fromRGB(255, 217, 61)
+
+    local parent = getSafeParent()
+    if ActiveCustomCursor then
+        ActiveCustomCursor:Destroy()
+        ActiveCustomCursor = nil
+    end
+
+    local CursorGui = Instance.new("ScreenGui")
+    CursorGui.Name = "CartoonUI_CustomCursor"
+    CursorGui.ResetOnSpawn = false
+    CursorGui.DisplayOrder = 99999
+    CursorGui.Parent = parent
+
+    local CursorLabel = Instance.new("TextLabel")
+    CursorLabel.Size = UDim2.new(0, cursorSize, 0, cursorSize)
+    CursorLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    CursorLabel.BackgroundTransparency = 1
+    CursorLabel.Font = DefaultTheme.FontBold
+    CursorLabel.Text = cursorIcon
+    CursorLabel.TextSize = cursorSize
+    CursorLabel.TextColor3 = cursorColor
+    CursorLabel.ZIndex = 100000
+    CursorLabel.Parent = CursorGui
+
+    local conn = RunService.RenderStepped:Connect(function()
+        if not CursorGui.Parent then return end
+        local mousePos = UserInputService:GetMouseLocation()
+        CursorLabel.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+    end)
+
+    CursorGui.Destroying:Connect(function()
+        if conn then conn:Disconnect() end
+    end)
+
+    ActiveCustomCursor = CursorGui
+    return CursorGui
+end
+
 function CartoonUI.CreateWindow(config)
     config = config or {}
     local Title = config.Title or "Boyfinity HUB"
@@ -278,6 +331,58 @@ function CartoonUI.CreateWindow(config)
                 t.Completed:Connect(function()
                     toast:Destroy()
                 end)
+            end
+        end)
+    end
+
+    -- ========================================================================
+    -- TOOLTIP SYSTEM (CARTOON BUBBLE HOVER)
+    -- ========================================================================
+    local TooltipFrame = Instance.new("Frame")
+    TooltipFrame.Name = "CartoonTooltip"
+    TooltipFrame.Size = UDim2.new(0, 120, 0, 28)
+    TooltipFrame.BackgroundColor3 = Theme.Outline
+    TooltipFrame.BorderSizePixel = 0
+    TooltipFrame.Visible = false
+    TooltipFrame.ZIndex = 50000
+    addCorner(TooltipFrame, 8)
+    TooltipFrame.Parent = ScreenGui
+
+    local TooltipLabel = Instance.new("TextLabel")
+    TooltipLabel.Size = UDim2.new(1, -12, 1, 0)
+    TooltipLabel.Position = UDim2.new(0, 6, 0, 0)
+    TooltipLabel.BackgroundTransparency = 1
+    TooltipLabel.Font = Theme.FontRegular
+    TooltipLabel.TextColor3 = Theme.TextLight
+    TooltipLabel.TextSize = 11
+    TooltipLabel.ZIndex = 50001
+    TooltipLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TooltipLabel.Parent = TooltipFrame
+
+    local function attachTooltip(guiObject, tooltipText)
+        if not tooltipText or tooltipText == "" then return end
+        local hoverConn
+        guiObject.MouseEnter:Connect(function()
+            TooltipLabel.Text = tooltipText
+            local textBounds = TooltipLabel.TextBounds.X + 18
+            TooltipFrame.Size = UDim2.new(0, math.clamp(textBounds, 70, 240), 0, 28)
+            TooltipFrame.Visible = true
+
+            if hoverConn then hoverConn:Disconnect() end
+            hoverConn = RunService.RenderStepped:Connect(function()
+                if not TooltipFrame.Visible then
+                    if hoverConn then hoverConn:Disconnect() end
+                    return
+                end
+                local mousePos = UserInputService:GetMouseLocation()
+                TooltipFrame.Position = UDim2.new(0, mousePos.X + 14, 0, mousePos.Y + 12)
+            end)
+        end)
+        guiObject.MouseLeave:Connect(function()
+            TooltipFrame.Visible = false
+            if hoverConn then
+                hoverConn:Disconnect()
+                hoverConn = nil
             end
         end)
     end
@@ -527,14 +632,14 @@ function CartoonUI.CreateWindow(config)
         for i, btnData in ipairs(config.RightButtons) do
             local bColor = btnData.Color or Theme.Secondary
             local bHover = btnData.HoverColor or Color3.fromRGB(110, 225, 218)
-            createHeaderButton(btnData.Icon or "★", bColor, bHover, function()
+            local hBtn = createHeaderButton(btnData.Icon or "★", bColor, bHover, function()
                 if btnData.Callback then
                     btnData.Callback()
                 end
-                if btnData.Tooltip then
-                    notify(btnData.Tooltip, "Aksi berhasil dieksekusi", 2, bColor)
-                end
             end, i)
+            if btnData.Tooltip then
+                attachTooltip(hBtn, btnData.Tooltip)
+            end
         end
     end
 
@@ -735,8 +840,20 @@ function CartoonUI.CreateWindow(config)
         setMinimized(bool)
     end
 
-    function WindowHandler:AddHeaderButton(iconText, callback, color)
-        return createHeaderButton(iconText, color or Theme.Secondary, Color3.fromRGB(110, 225, 218), callback, 50)
+    function WindowHandler:AddHeaderButton(iconText, callback, color, tooltipText)
+        local btn = createHeaderButton(iconText, color or Theme.Secondary, Color3.fromRGB(110, 225, 218), callback, 50)
+        if tooltipText then
+            attachTooltip(btn, tooltipText)
+        end
+        return btn
+    end
+
+    function WindowHandler:AttachTooltip(guiObject, tooltipText)
+        attachTooltip(guiObject, tooltipText)
+    end
+
+    function WindowHandler:SetCursor(cursorConfig)
+        return CartoonUI.SetCursor(cursorConfig)
     end
 
     function WindowHandler:Destroy()
@@ -1953,6 +2070,277 @@ function CartoonUI.CreateWindow(config)
             return {
                 SetText = function(_, newText)
                     TextL.Text = newText
+                end
+            }
+        end
+
+        -- 9. CHECKBOX (2D CARTOON STYLE TICK BOX)
+        function TabElements:CreateCheckbox(checkboxText, defaultState, callback)
+            defaultState = defaultState or false
+            callback = callback or function() end
+
+            local state = defaultState
+
+            local Card = Instance.new("Frame")
+            Card.Size = UDim2.new(1, 0, 0, 44)
+            Card.BackgroundColor3 = Theme.CardBg
+            Card.BorderSizePixel = 0
+            addCorner(Card, 12)
+            addCartoonStroke(Card, 2, Theme.Outline)
+            Card.Parent = Page
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -60, 1, 0)
+            Label.Position = UDim2.new(0, 14, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Font = Theme.FontBold
+            Label.Text = checkboxText
+            Label.TextColor3 = Theme.TextDark
+            Label.TextSize = 14
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = Card
+
+            local BoxBtn = Instance.new("TextButton")
+            BoxBtn.Size = UDim2.new(0, 26, 0, 26)
+            BoxBtn.Position = UDim2.new(1, -40, 0.5, -13)
+            BoxBtn.BackgroundColor3 = state and Theme.Green or Theme.Sidebar
+            BoxBtn.BorderSizePixel = 0
+            BoxBtn.AutoButtonColor = false
+            BoxBtn.Text = state and "✔" or ""
+            BoxBtn.TextColor3 = Theme.Outline
+            BoxBtn.Font = Theme.FontBold
+            BoxBtn.TextSize = 15
+            addCorner(BoxBtn, 8)
+            addCartoonStroke(BoxBtn, 2, Theme.Outline)
+            BoxBtn.Parent = Card
+
+            local function updateCheckbox(val)
+                state = val
+                BoxBtn.Text = state and "✔" or ""
+                tween(BoxBtn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    BackgroundColor3 = state and Theme.Green or Theme.Sidebar,
+                    Size = UDim2.new(0, 28, 0, 28),
+                    Position = UDim2.new(1, -41, 0.5, -14)
+                })
+                task.delay(0.1, function()
+                    tween(BoxBtn, TweenInfo.new(0.15), {
+                        Size = UDim2.new(0, 26, 0, 26),
+                        Position = UDim2.new(1, -40, 0.5, -13)
+                    })
+                end)
+                pcall(callback, state)
+            end
+
+            BoxBtn.MouseButton1Click:Connect(function()
+                updateCheckbox(not state)
+            end)
+
+            return {
+                SetValue = function(_, val)
+                    updateCheckbox(val)
+                end,
+                GetValue = function()
+                    return state
+                end
+            }
+        end
+
+        -- 10. DIVIDER / SEPARATOR LINE
+        function TabElements:CreateDivider(labelOptional)
+            local DivContainer = Instance.new("Frame")
+            DivContainer.Size = UDim2.new(1, 0, 0, labelOptional and 24 or 12)
+            DivContainer.BackgroundTransparency = 1
+            DivContainer.Parent = Page
+
+            if labelOptional and labelOptional ~= "" then
+                local LineL = Instance.new("Frame")
+                LineL.Size = UDim2.new(0.3, -10, 0, 2.5)
+                LineL.Position = UDim2.new(0, 6, 0.5, -1)
+                LineL.BackgroundColor3 = Theme.Outline
+                LineL.BorderSizePixel = 0
+                addCorner(LineL, 2)
+                LineL.Parent = DivContainer
+
+                local MidLabel = Instance.new("TextLabel")
+                MidLabel.Size = UDim2.new(0.4, 0, 1, 0)
+                MidLabel.Position = UDim2.new(0.3, 0, 0, 0)
+                MidLabel.BackgroundTransparency = 1
+                MidLabel.Font = Theme.FontBold
+                MidLabel.Text = labelOptional
+                MidLabel.TextColor3 = Theme.TextMuted
+                MidLabel.TextSize = 11
+                MidLabel.Parent = DivContainer
+
+                local LineR = Instance.new("Frame")
+                LineR.Size = UDim2.new(0.3, -10, 0, 2.5)
+                LineR.Position = UDim2.new(0.7, 4, 0.5, -1)
+                LineR.BackgroundColor3 = Theme.Outline
+                LineR.BorderSizePixel = 0
+                addCorner(LineR, 2)
+                LineR.Parent = DivContainer
+            else
+                local Line = Instance.new("Frame")
+                Line.Size = UDim2.new(1, -12, 0, 2.5)
+                Line.Position = UDim2.new(0, 6, 0.5, -1)
+                Line.BackgroundColor3 = Theme.Outline
+                Line.BorderSizePixel = 0
+                addCorner(Line, 2)
+                Line.Parent = DivContainer
+            end
+
+            return DivContainer
+        end
+
+        -- 11. COLOR PICKER (CARTOON POPUP WHEEL & PRESETS)
+        function TabElements:CreateColorPicker(colorText, defaultColor, callback)
+            defaultColor = defaultColor or Color3.fromRGB(255, 107, 107)
+            callback = callback or function() end
+
+            local currentColor = defaultColor
+            local isExpanded = false
+
+            local Card = Instance.new("Frame")
+            Card.Size = UDim2.new(1, 0, 0, 48)
+            Card.BackgroundColor3 = Theme.CardBg
+            Card.BorderSizePixel = 0
+            Card.ClipsDescendants = true
+            addCorner(Card, 12)
+            addCartoonStroke(Card, 2, Theme.Outline)
+            Card.Parent = Page
+
+            local HeaderBtn = Instance.new("TextButton")
+            HeaderBtn.Size = UDim2.new(1, 0, 0, 48)
+            HeaderBtn.BackgroundTransparency = 1
+            HeaderBtn.Text = ""
+            HeaderBtn.Parent = Card
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(0.6, 0, 1, 0)
+            Label.Position = UDim2.new(0, 14, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Font = Theme.FontBold
+            Label.Text = colorText
+            Label.TextColor3 = Theme.TextDark
+            Label.TextSize = 14
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = HeaderBtn
+
+            local ColorPreview = Instance.new("Frame")
+            ColorPreview.Size = UDim2.new(0, 48, 0, 24)
+            ColorPreview.Position = UDim2.new(1, -62, 0.5, -12)
+            ColorPreview.BackgroundColor3 = currentColor
+            ColorPreview.BorderSizePixel = 0
+            addCorner(ColorPreview, 8)
+            addCartoonStroke(ColorPreview, 2, Theme.Outline)
+            ColorPreview.Parent = HeaderBtn
+
+            -- Palette Box & Presets
+            local PaletteContainer = Instance.new("Frame")
+            PaletteContainer.Size = UDim2.new(1, -24, 0, 92)
+            PaletteContainer.Position = UDim2.new(0, 12, 0, 52)
+            PaletteContainer.BackgroundTransparency = 1
+            PaletteContainer.Parent = Card
+
+            local PaletteLabel = Instance.new("TextLabel")
+            PaletteLabel.Size = UDim2.new(1, 0, 0, 18)
+            PaletteLabel.Position = UDim2.new(0, 0, 0, 0)
+            PaletteLabel.BackgroundTransparency = 1
+            PaletteLabel.Font = Theme.FontRegular
+            PaletteLabel.Text = "Pilih Preset Warna:"
+            PaletteLabel.TextColor3 = Theme.TextMuted
+            PaletteLabel.TextSize = 11
+            PaletteLabel.TextXAlignment = Enum.TextXAlignment.Left
+            PaletteLabel.Parent = PaletteContainer
+
+            local SwatchList = {
+                Color3.fromRGB(255, 107, 107), -- Coral Red
+                Color3.fromRGB(255, 159, 67),  -- Orange
+                Color3.fromRGB(254, 202, 87),  -- Yellow
+                Color3.fromRGB(106, 222, 126), -- Lime Green
+                Color3.fromRGB(78, 205, 196),  -- Cyan
+                Color3.fromRGB(84, 160, 255),  -- Blue
+                Color3.fromRGB(142, 108, 239), -- Purple
+                Color3.fromRGB(255, 159, 243), -- Pink
+                Color3.fromRGB(255, 255, 255), -- White
+                Color3.fromRGB(40, 40, 45),    -- Dark/Black
+            }
+
+            local SwatchesFrame = Instance.new("Frame")
+            SwatchesFrame.Size = UDim2.new(1, 0, 0, 28)
+            SwatchesFrame.Position = UDim2.new(0, 0, 0, 20)
+            SwatchesFrame.BackgroundTransparency = 1
+            SwatchesFrame.Parent = PaletteContainer
+
+            local SLayout = Instance.new("UIGridLayout")
+            SLayout.CellSize = UDim2.new(0.09, 0, 0, 24)
+            SLayout.CellPadding = UDim2.new(0.011, 0, 0, 4)
+            SLayout.Parent = SwatchesFrame
+
+            local function applyColor(newCol)
+                currentColor = newCol
+                ColorPreview.BackgroundColor3 = newCol
+                pcall(callback, newCol)
+            end
+
+            for _, swatchCol in ipairs(SwatchList) do
+                local SwatchBtn = Instance.new("TextButton")
+                SwatchBtn.BackgroundColor3 = swatchCol
+                SwatchBtn.BorderSizePixel = 0
+                SwatchBtn.Text = ""
+                SwatchBtn.AutoButtonColor = false
+                addCorner(SwatchBtn, 6)
+                addCartoonStroke(SwatchBtn, 1.8, Theme.Outline)
+                SwatchBtn.Parent = SwatchesFrame
+
+                SwatchBtn.MouseButton1Click:Connect(function()
+                    applyColor(swatchCol)
+                end)
+            end
+
+            -- Manual RGB Input
+            local RGBBox = Instance.new("TextBox")
+            RGBBox.Size = UDim2.new(1, 0, 0, 28)
+            RGBBox.Position = UDim2.new(0, 0, 0, 58)
+            RGBBox.BackgroundColor3 = Theme.Sidebar
+            RGBBox.BorderSizePixel = 0
+            RGBBox.Font = Theme.FontRegular
+            RGBBox.PlaceholderText = "Format: R, G, B (cth: 255, 50, 50)"
+            RGBBox.PlaceholderColor3 = Theme.TextMuted
+            RGBBox.Text = string.format("%d, %d, %d", math.floor(currentColor.R * 255), math.floor(currentColor.G * 255), math.floor(currentColor.B * 255))
+            RGBBox.TextColor3 = Theme.TextDark
+            RGBBox.TextSize = 12
+            RGBBox.ClearTextOnFocus = false
+            addCorner(RGBBox, 8)
+            addCartoonStroke(RGBBox, 1.5, Theme.Outline)
+            RGBBox.Parent = PaletteContainer
+
+            RGBBox.FocusLost:Connect(function()
+                local r, g, b = RGBBox.Text:match("(%d+)[%s,]+(%d+)[%s,]+(%d+)")
+                if r and g and b then
+                    local parsedCol = Color3.fromRGB(math.clamp(tonumber(r), 0, 255), math.clamp(tonumber(g), 0, 255), math.clamp(tonumber(b), 0, 255))
+                    applyColor(parsedCol)
+                else
+                    RGBBox.Text = string.format("%d, %d, %d", math.floor(currentColor.R * 255), math.floor(currentColor.G * 255), math.floor(currentColor.B * 255))
+                end
+            end)
+
+            local function toggleColorPicker()
+                isExpanded = not isExpanded
+                local targetHeight = isExpanded and 152 or 48
+                tween(Card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, 0, 0, targetHeight)
+                })
+            end
+
+            HeaderBtn.MouseButton1Click:Connect(toggleColorPicker)
+
+            return {
+                SetColor = function(_, newColor)
+                    applyColor(newColor)
+                    RGBBox.Text = string.format("%d, %d, %d", math.floor(newColor.R * 255), math.floor(newColor.G * 255), math.floor(newColor.B * 255))
+                end,
+                GetColor = function()
+                    return currentColor
                 end
             }
         end
