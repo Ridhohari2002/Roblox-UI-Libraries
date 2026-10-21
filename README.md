@@ -117,11 +117,53 @@ Tab:CreateButton("Speed Boost 32", function()
 end)
 
 -- C. Toggle (Switch Bouncy ON/OFF)
+-- 1. Toggle Standar
 local myToggle = Tab:CreateToggle("Auto Sprint", false, function(state)
     print("Toggle State:", state)
 end)
 -- myToggle:SetValue(true)
 -- local val = myToggle:GetValue()
+
+-- 2. Toggle dengan Inline Color Picker (Hemat Tempat, ada tombol swatch di kanan switch)
+Tab:CreateToggle("Tampilkan FOV Circle", true, function(state)
+    print("FOV Active:", state)
+end, {
+    Color = {
+        Default = Color3.fromRGB(0, 255, 255),
+        Callback = function(newCol)
+            print("Warna FOV dipilih:", newCol)
+        end
+    }
+})
+
+-- 3. Toggle dengan Inline Keybinds (Bisa memanggil 1 atau beberapa Keybind sekaligus di dalam kartu toggle!)
+Tab:CreateToggle("Underground Active", false, function(state)
+    print("Underground Active:", state)
+end, {
+    Keybinds = {
+        {
+            Label = "Toggle",
+            Default = Enum.KeyCode.V,
+            Callback = function(newKey)
+                print("Keybind Toggle diubah ke:", newKey.Name)
+            end
+        },
+        {
+            Label = "Turun",
+            Default = Enum.KeyCode.Z,
+            Callback = function(newKey)
+                print("Keybind Turun diubah ke:", newKey.Name)
+            end
+        },
+        {
+            Label = "Naik",
+            Default = Enum.KeyCode.X,
+            Callback = function(newKey)
+                print("Keybind Naik diubah ke:", newKey.Name)
+            end
+        }
+    }
+})
 
 -- D. Checkbox (Kotak Centang 2D Cartoon)
 local myCheckbox = Tab:CreateCheckbox("Auto Collect Drops", true, function(state)
