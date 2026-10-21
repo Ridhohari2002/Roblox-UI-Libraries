@@ -123,35 +123,86 @@ end)
 -- myToggle:SetValue(true)
 -- local val = myToggle:GetValue()
 
--- D. Slider (Pengatur Angka dengan Badge Nilai Real-time)
+-- D. Checkbox (Kotak Centang 2D Cartoon)
+local myCheckbox = Tab:CreateCheckbox("Auto Collect Drops", true, function(state)
+    print("Checkbox State:", state)
+end)
+-- myCheckbox:SetValue(false)
+-- local isChecked = myCheckbox:GetValue()
+
+-- E. Slider (Pengatur Angka dengan Badge Nilai Real-time)
 local mySlider = Tab:CreateSlider("WalkSpeed", 16, 150, 16, function(value)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
 end)
 -- mySlider:SetValue(50)
 -- local val = mySlider:GetValue()
 
--- E. Dropdown (Pilihan Menu)
+-- F. Dropdown (Pilihan Menu Kartun)
 local myDrop = Tab:CreateDropdown("Pilih Target", {"All", "Nearest", "Lowest HP"}, "Nearest", function(selected)
     print("Pilihan:", selected)
 end)
 
--- F. Input / TextBox (Kolom Teks)
+-- G. Input / TextBox (Kolom Teks)
 local myInput = Tab:CreateInput("Nama Pemain", "Ketik nama...", function(text, enterPressed)
     print("Input:", text)
 end)
 
--- G. Keybind Selector (Pemilih Tombol Keyboard)
-Tab:CreateKeybind("Keybind Toggle UI", Enum.KeyCode.RightControl, function(newKey)
+-- H. Keybind Selector (Pemilih Tombol Keyboard)
+Tab:CreateKeybind("Keybind Menu", Enum.KeyCode.RightControl, function(newKey)
     Window:SetToggleKey(newKey)
 end)
 
--- H. Label Info
-Tab:CreateLabel("Script aman & terproteksi!", "💡")
+-- I. Color Picker (Palet Warna Kartun & Input RGB)
+local myColor = Tab:CreateColorPicker("ESP Color", Color3.fromRGB(255, 107, 107), function(color)
+    print("Warna dipilih:", color)
+end)
+-- myColor:SetColor(Color3.fromRGB(0, 255, 120))
+-- local curColor = myColor:GetColor()
+
+-- J. Divider (Garis Pemisah Kartun)
+Tab:CreateDivider() -- Garis pemisah polos
+Tab:CreateDivider("PENGATURAN TAMBAHAN") -- Garis pemisah dengan teks tengah
+
+-- K. Label Info / Banner
+local myLabel = Tab:CreateLabel("Script aman & terproteksi!", "💡")
+-- myLabel:SetText("Teks baru!")
 ```
 
 ---
 
-## 🔔 4. Notifikasi Bawaan
+## 🎯 4. Custom Cursor & Tooltips
+
+### 🖱️ Custom Cursor (Emoji / Icon Kartun)
+Ganti cursor mouse bawaan Roblox dengan ikon kartun kustom:
+```lua
+-- Menggunakan Emoji / Icon kustom
+CartoonUI.SetCursor({
+    Icon = "🎯",                           -- Emoji atau karakter cursor ("🎯", "⚔️", "✨")
+    Size = 24,                             -- Ukuran cursor
+    Color = Color3.fromRGB(255, 217, 61)   -- Warna cursor
+})
+
+-- Reset kembali ke cursor bawaan Roblox:
+CartoonUI.SetCursor(nil)
+-- atau: Window:SetCursor(nil)
+```
+
+### 💬 Tooltips (Hover Bubble Kartun)
+Bisa dipasang pada tombol header atau elemen GUI mana pun:
+```lua
+-- Pasang tooltip pada tombol header:
+Window:AddHeaderButton("⚙️", function()
+    print("Settings clicked!")
+end, Color3.fromRGB(142, 108, 239), "Buka Pengaturan Cepat")
+
+-- Pasang tooltip pada elemen GUI apa saja:
+local myButton = Tab:CreateButton("Hapus Sampah", function() end)
+Window:AttachTooltip(myButton.Button, "Klik untuk menghapus part yang tidak digunakan")
+```
+
+---
+
+## 🔔 5. Notifikasi Bawaan
 
 ```lua
 Window:Notify("Judul Notifikasi", "Pesan notifikasi kartun pop-in!", 3, Color3.fromRGB(255, 217, 61))
