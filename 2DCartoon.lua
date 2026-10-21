@@ -777,8 +777,8 @@ function CartoonUI.CreateWindow(config)
     TabScroll.Position = UDim2.new(0, 4, 0, 8)
     TabScroll.BackgroundTransparency = 1
     TabScroll.BorderSizePixel = 0
-    TabScroll.ScrollBarThickness = 3
-    TabScroll.ScrollBarImageColor3 = Theme.Outline
+    TabScroll.ScrollBarThickness = 0  -- Tersembunyi, tapi tetap bisa scroll
+    TabScroll.ScrollBarImageTransparency = 1
     TabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     TabScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     TabScroll.Parent = Sidebar
@@ -1395,28 +1395,39 @@ function CartoonUI.CreateWindow(config)
 
         local TabBtn = Instance.new("TextButton")
         TabBtn.Name = "Tab_" .. tabName
-        TabBtn.Size = UDim2.new(0.92, 0, 0, 40)
+        TabBtn.Size = UDim2.new(1, -6, 0, 42)
         TabBtn.BackgroundColor3 = Theme.CardBg
         TabBtn.BorderSizePixel = 0
         TabBtn.AutoButtonColor = false
         TabBtn.Text = ""
-        addCorner(TabBtn, 12)
+        addCorner(TabBtn, 10)
         local tabStroke = addCartoonStroke(TabBtn, 2, Theme.Outline)
         TabBtn.Parent = TabScroll
 
+        -- Active indicator bar di sisi kiri
+        local ActiveBar = Instance.new("Frame")
+        ActiveBar.Name = "ActiveBar"
+        ActiveBar.Size = UDim2.new(0, 4, 0.6, 0)
+        ActiveBar.Position = UDim2.new(0, 0, 0.2, 0)
+        ActiveBar.BackgroundColor3 = Theme.Yellow
+        ActiveBar.BorderSizePixel = 0
+        addCorner(ActiveBar, 3)
+        ActiveBar.Visible = false
+        ActiveBar.Parent = TabBtn
+
         local TabIcon = Instance.new("TextLabel")
-        TabIcon.Size = UDim2.new(0, 24, 1, 0)
-        TabIcon.Position = UDim2.new(0, 8, 0, 0)
+        TabIcon.Size = UDim2.new(0, 22, 1, 0)
+        TabIcon.Position = UDim2.new(0, 10, 0, 0)
         TabIcon.BackgroundTransparency = 1
         TabIcon.Font = Theme.FontBold
         TabIcon.Text = iconEmoji
-        TabIcon.TextSize = 18
+        TabIcon.TextSize = 17
         TabIcon.TextColor3 = Theme.Outline
         TabIcon.Parent = TabBtn
 
         local TabText = Instance.new("TextLabel")
-        TabText.Size = UDim2.new(1, -38, 1, 0)
-        TabText.Position = UDim2.new(0, 34, 0, 0)
+        TabText.Size = UDim2.new(1, -40, 1, 0)
+        TabText.Position = UDim2.new(0, 36, 0, 0)
         TabText.BackgroundTransparency = 1
         TabText.Font = Theme.FontBold
         TabText.Text = tabName
@@ -1430,8 +1441,8 @@ function CartoonUI.CreateWindow(config)
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.BackgroundTransparency = 1
         Page.BorderSizePixel = 0
-        Page.ScrollBarThickness = 4
-        Page.ScrollBarImageColor3 = Theme.Outline
+        Page.ScrollBarThickness = 0  -- Tersembunyi, scroll tetap berfungsi
+        Page.ScrollBarImageTransparency = 1
         Page.CanvasSize = UDim2.new(0, 0, 0, 0)
         Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
         Page.Visible = false
@@ -1461,8 +1472,17 @@ function CartoonUI.CreateWindow(config)
                 tween(t.Button, TweenInfo.new(0.2), {
                     BackgroundColor3 = Theme.CardBg
                 })
-                t.Button:FindFirstChildWhichIsA("UIStroke").Color = Theme.Outline
-                t.Button:FindFirstChildWhichIsA("UIStroke").Thickness = 2
+                local str = t.Button:FindFirstChildWhichIsA("UIStroke")
+                if str then str.Color = Theme.Outline str.Thickness = 2 end
+                local bar = t.Button:FindFirstChild("ActiveBar")
+                if bar then bar.Visible = false end
+                -- reset text color
+                local txt = t.Button:FindFirstChildOfClass("TextLabel") and t.Button:GetChildren()
+                for _, ch in ipairs(t.Button:GetChildren()) do
+                    if ch:IsA("TextLabel") and ch.Name ~= "ActiveBar" then
+                        ch.TextColor3 = Theme.TextDark
+                    end
+                end
             end
             Page.Visible = true
             WindowHandler.CurrentTab = TabData
@@ -1470,7 +1490,10 @@ function CartoonUI.CreateWindow(config)
             tween(TabBtn, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                 BackgroundColor3 = Theme.Yellow
             })
+            tabStroke.Color = Theme.YellowDark
             tabStroke.Thickness = 3
+            local bar = TabBtn:FindFirstChild("ActiveBar")
+            if bar then bar.Visible = true end
         end
 
         TabBtn.MouseButton1Click:Connect(activateTab)
@@ -1478,7 +1501,7 @@ function CartoonUI.CreateWindow(config)
         TabBtn.MouseEnter:Connect(function()
             if WindowHandler.CurrentTab ~= TabData then
                 tween(TabBtn, TweenInfo.new(0.15), {
-                    BackgroundColor3 = Theme.CardDark
+                    BackgroundColor3 = Color3.fromRGB(225, 230, 250)
                 })
             end
         end)
@@ -1585,35 +1608,260 @@ function CartoonUI.CreateWindow(config)
             }
         end
 
-        -- 3. TOGGLE (BOUNCY SWITCH)
-        function TabElements:CreateToggle(toggleText, defaultState, callback)
+        -- 3. TOGGLE (BOUNCY SWITCH + INLINE COLOR PICKER + INLINE KEYBINDS)
+        -- opts = {
+        --   Color = { Default = Color3, Callback = fn }   --> tambah swatch warna di kanan
+        --   Keybinds = {
+        --     { Label = "V", Default = Enum.KeyCode.V, Callback = fn },
+        --     { Label = "B", Default = Enum.KeyCode.B, Callback = fn },  -- opsional kedua
+        --   }
+        -- }
+        function TabElements:CreateToggle(toggleText, defaultState, callback, opts)
             defaultState = defaultState or false
             callback = callback or function() end
+            opts = opts or {}
 
             local state = defaultState
+            local hasColor = (opts.Color ~= nil)
+            local hasKeybinds = (opts.Keybinds ~= nil and #opts.Keybinds > 0)
+
+            -- Hitung berapa baris ekstra dibutuhkan
+            local extraRows = (hasKeybinds and 1 or 0)  -- keybind row di bawah
+            local cardHeight = 48 + (extraRows * 32)
 
             local Card = Instance.new("Frame")
-            Card.Size = UDim2.new(1, 0, 0, 48)
+            Card.Size = UDim2.new(1, 0, 0, cardHeight)
             Card.BackgroundColor3 = Theme.CardBg
             Card.BorderSizePixel = 0
+            Card.ClipsDescendants = false
             addCorner(Card, 12)
             addCartoonStroke(Card, 2, Theme.Outline)
             Card.Parent = Page
 
+            -- ── Label ──────────────────────────────────────────────
+            local rightPad = 68 -- jarak dari kanan untuk switch saja
+            if hasColor then rightPad = rightPad + 36 end
+
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -70, 1, 0)
+            Label.Size = UDim2.new(1, -(rightPad + 10), 0, 48)
             Label.Position = UDim2.new(0, 14, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Font = Theme.FontBold
             Label.Text = toggleText
             Label.TextColor3 = Theme.TextDark
-            Label.TextSize = 14
+            Label.TextSize = 13
             Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.TextWrapped = true
             Label.Parent = Card
 
+            -- ── Inline Color Swatch ────────────────────────────────
+            local colorSwatchBtn = nil
+            local cpExpanded = false
+            local cpPaletteFrame = nil
+            local currentPickedColor = hasColor and (opts.Color.Default or Color3.fromRGB(0, 255, 255)) or nil
+
+            if hasColor then
+                colorSwatchBtn = Instance.new("TextButton")
+                colorSwatchBtn.Size = UDim2.new(0, 28, 0, 28)
+                colorSwatchBtn.Position = UDim2.new(1, -(rightPad), 0, 10)
+                colorSwatchBtn.BackgroundColor3 = currentPickedColor
+                colorSwatchBtn.BorderSizePixel = 0
+                colorSwatchBtn.Text = ""
+                colorSwatchBtn.AutoButtonColor = false
+                colorSwatchBtn.ZIndex = 5
+                addCorner(colorSwatchBtn, 8)
+                addCartoonStroke(colorSwatchBtn, 2, Theme.Outline)
+                colorSwatchBtn.Parent = Card
+
+                -- Palette popup (tersembunyi awalnya, di bagian bawah kartu saat dibuka)
+                cpPaletteFrame = Instance.new("Frame")
+                cpPaletteFrame.Name = "CPPalette"
+                cpPaletteFrame.Size = UDim2.new(1, -14, 0, 76)
+                cpPaletteFrame.Position = UDim2.new(0, 7, 0, cardHeight + 4)
+                cpPaletteFrame.BackgroundColor3 = Theme.CardDark
+                cpPaletteFrame.BorderSizePixel = 0
+                cpPaletteFrame.Visible = false
+                cpPaletteFrame.ZIndex = 20
+                addCorner(cpPaletteFrame, 10)
+                addCartoonStroke(cpPaletteFrame, 2, Theme.Outline)
+                cpPaletteFrame.Parent = Card
+
+                local cpSwatches = {
+                    Color3.fromRGB(0, 255, 255),   -- Cyan
+                    Color3.fromRGB(255, 50, 50),   -- Red
+                    Color3.fromRGB(50, 255, 100),  -- Green
+                    Color3.fromRGB(255, 217, 61),  -- Yellow
+                    Color3.fromRGB(142, 108, 239), -- Purple
+                    Color3.fromRGB(255, 159, 67),  -- Orange
+                    Color3.fromRGB(255, 159, 243), -- Pink
+                    Color3.fromRGB(84, 160, 255),  -- Blue
+                    Color3.fromRGB(255, 255, 255), -- White
+                    Color3.fromRGB(35, 38, 56),    -- Dark
+                }
+
+                local cpSwatchFrame = Instance.new("Frame")
+                cpSwatchFrame.Size = UDim2.new(1, -12, 0, 30)
+                cpSwatchFrame.Position = UDim2.new(0, 6, 0, 6)
+                cpSwatchFrame.BackgroundTransparency = 1
+                cpSwatchFrame.ZIndex = 21
+                cpSwatchFrame.Parent = cpPaletteFrame
+
+                local cpGrid = Instance.new("UIGridLayout")
+                cpGrid.CellSize = UDim2.new(0.09, -2, 0, 24)
+                cpGrid.CellPadding = UDim2.new(0.011, 0, 0, 0)
+                cpGrid.Parent = cpSwatchFrame
+
+                local cpRGBBox = Instance.new("TextBox")
+                cpRGBBox.Size = UDim2.new(1, -12, 0, 26)
+                cpRGBBox.Position = UDim2.new(0, 6, 0, 42)
+                cpRGBBox.BackgroundColor3 = Theme.Sidebar
+                cpRGBBox.BorderSizePixel = 0
+                cpRGBBox.Font = Theme.FontRegular
+                cpRGBBox.PlaceholderText = "R, G, B (cth: 0, 255, 255)"
+                cpRGBBox.PlaceholderColor3 = Theme.TextMuted
+                cpRGBBox.Text = string.format("%d, %d, %d",
+                    math.floor(currentPickedColor.R*255),
+                    math.floor(currentPickedColor.G*255),
+                    math.floor(currentPickedColor.B*255))
+                cpRGBBox.TextColor3 = Theme.TextDark
+                cpRGBBox.TextSize = 11
+                cpRGBBox.ClearTextOnFocus = false
+                cpRGBBox.ZIndex = 21
+                addCorner(cpRGBBox, 7)
+                addCartoonStroke(cpRGBBox, 1.5, Theme.Outline)
+                cpRGBBox.Parent = cpPaletteFrame
+
+                local function applyPickerColor(newCol)
+                    currentPickedColor = newCol
+                    colorSwatchBtn.BackgroundColor3 = newCol
+                    cpRGBBox.Text = string.format("%d, %d, %d",
+                        math.floor(newCol.R*255), math.floor(newCol.G*255), math.floor(newCol.B*255))
+                    pcall(opts.Color.Callback, newCol)
+                end
+
+                for _, sc in ipairs(cpSwatches) do
+                    local sb = Instance.new("TextButton")
+                    sb.BackgroundColor3 = sc
+                    sb.BorderSizePixel = 0
+                    sb.Text = ""
+                    sb.AutoButtonColor = false
+                    sb.ZIndex = 22
+                    addCorner(sb, 5)
+                    addCartoonStroke(sb, 1.5, Theme.Outline)
+                    sb.Parent = cpSwatchFrame
+                    sb.MouseButton1Click:Connect(function() applyPickerColor(sc) end)
+                end
+
+                cpRGBBox.FocusLost:Connect(function()
+                    local r, g, b = cpRGBBox.Text:match("(%d+)[%s,]+(%d+)[%s,]+(%d+)")
+                    if r and g and b then
+                        applyPickerColor(Color3.fromRGB(
+                            math.clamp(tonumber(r),0,255),
+                            math.clamp(tonumber(g),0,255),
+                            math.clamp(tonumber(b),0,255)
+                        ))
+                    else
+                        cpRGBBox.Text = string.format("%d, %d, %d",
+                            math.floor(currentPickedColor.R*255),
+                            math.floor(currentPickedColor.G*255),
+                            math.floor(currentPickedColor.B*255))
+                    end
+                end)
+
+                colorSwatchBtn.MouseButton1Click:Connect(function()
+                    cpExpanded = not cpExpanded
+                    cpPaletteFrame.Visible = cpExpanded
+                    local newH = cardHeight + (cpExpanded and 84 or 0)
+                    tween(Card, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(1, 0, 0, newH)
+                    })
+                end)
+            end
+
+            -- ── Inline Keybind Row ────────────────────────────────
+            local keybindObjects = {}
+            if hasKeybinds then
+                local kbRow = Instance.new("Frame")
+                kbRow.Size = UDim2.new(1, -14, 0, 26)
+                kbRow.Position = UDim2.new(0, 7, 0, 50)
+                kbRow.BackgroundColor3 = Theme.CardDark
+                kbRow.BorderSizePixel = 0
+                addCorner(kbRow, 8)
+                kbRow.Parent = Card
+
+                local kbLabel = Instance.new("TextLabel")
+                kbLabel.Size = UDim2.new(0, 78, 1, 0)
+                kbLabel.Position = UDim2.new(0, 8, 0, 0)
+                kbLabel.BackgroundTransparency = 1
+                kbLabel.Font = Theme.FontRegular
+                kbLabel.Text = "⌨ Keybind:"
+                kbLabel.TextColor3 = Theme.TextMuted
+                kbLabel.TextSize = 11
+                kbLabel.TextXAlignment = Enum.TextXAlignment.Left
+                kbLabel.Parent = kbRow
+
+                local kbBtnsHolder = Instance.new("Frame")
+                kbBtnsHolder.Size = UDim2.new(1, -90, 1, 0)
+                kbBtnsHolder.Position = UDim2.new(0, 86, 0, 0)
+                kbBtnsHolder.BackgroundTransparency = 1
+                kbBtnsHolder.Parent = kbRow
+
+                local kbListLayout = Instance.new("UIListLayout")
+                kbListLayout.FillDirection = Enum.FillDirection.Horizontal
+                kbListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+                kbListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+                kbListLayout.Padding = UDim.new(0, 6)
+                kbListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                kbListLayout.Parent = kbBtnsHolder
+
+                for i, kbCfg in ipairs(opts.Keybinds) do
+                    local kbListening = false
+                    local kbCurrentKey = kbCfg.Default or Enum.KeyCode.Unknown
+                    local kbCb = kbCfg.Callback or function() end
+                    local kbLabelText = kbCfg.Label or ("K" .. i)
+
+                    local kbBtn = Instance.new("TextButton")
+                    kbBtn.Size = UDim2.new(0, 80, 0, 20)
+                    kbBtn.BackgroundColor3 = Theme.Yellow
+                    kbBtn.BorderSizePixel = 0
+                    kbBtn.Font = Theme.FontBold
+                    kbBtn.Text = kbLabelText .. ": " .. kbCurrentKey.Name
+                    kbBtn.TextColor3 = Theme.Outline
+                    kbBtn.TextSize = 10
+                    kbBtn.AutoButtonColor = false
+                    kbBtn.LayoutOrder = i
+                    addCorner(kbBtn, 6)
+                    addCartoonStroke(kbBtn, 1.5, Theme.Outline)
+                    kbBtn.Parent = kbBtnsHolder
+
+                    kbBtn.MouseButton1Click:Connect(function()
+                        kbListening = true
+                        kbBtn.Text = "..."
+                        kbBtn.BackgroundColor3 = Theme.Primary
+                        kbBtn.TextColor3 = Color3.fromRGB(255,255,255)
+                    end)
+
+                    UserInputService.InputBegan:Connect(function(input, gpe)
+                        if kbListening and not gpe then
+                            if input.UserInputType == Enum.UserInputType.Keyboard then
+                                kbCurrentKey = input.KeyCode
+                                kbListening = false
+                                kbBtn.Text = kbLabelText .. ": " .. kbCurrentKey.Name
+                                kbBtn.BackgroundColor3 = Theme.Yellow
+                                kbBtn.TextColor3 = Theme.Outline
+                                pcall(kbCb, kbCurrentKey)
+                            end
+                        end
+                    end)
+
+                    table.insert(keybindObjects, { Button = kbBtn, GetKey = function() return kbCurrentKey end })
+                end
+            end
+
+            -- ── Switch (paling kanan) ──────────────────────────────
             local Track = Instance.new("TextButton")
             Track.Size = UDim2.new(0, 50, 0, 26)
-            Track.Position = UDim2.new(1, -62, 0.5, -13)
+            Track.Position = UDim2.new(1, -62, 0, 11)
             Track.BackgroundColor3 = state and Theme.Green or Color3.fromRGB(215, 220, 230)
             Track.BorderSizePixel = 0
             Track.AutoButtonColor = false
@@ -1657,7 +1905,17 @@ function CartoonUI.CreateWindow(config)
                 end,
                 GetValue = function()
                     return state
-                end
+                end,
+                GetColor = function()
+                    return currentPickedColor
+                end,
+                SetColor = function(_, newCol)
+                    if colorSwatchBtn then
+                        colorSwatchBtn.BackgroundColor3 = newCol
+                        currentPickedColor = newCol
+                    end
+                end,
+                Keybinds = keybindObjects
             }
         end
 
