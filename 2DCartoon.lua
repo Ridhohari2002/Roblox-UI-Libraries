@@ -2053,14 +2053,66 @@ function CartoonUI.CreateWindow(config)
             }
         end
 
-        -- 5. DROPDOWN
-        function TabElements:CreateDropdown(dropdownText, options, defaultSelected, callback)
+        -- 5. DROPDOWN (Supports Single-Select & Multi-Select)
+        function TabElements:CreateDropdown(dropdownText, options, defaultSelected, arg4, arg5)
             options = options or {}
-            defaultSelected = defaultSelected or options[1] or "Select"
-            callback = callback or function() end
+
+            local isMulti = false
+            local callback = function() end
+
+            if type(arg4) == "boolean" then
+                isMulti = arg4
+                if type(arg5) == "function" then
+                    callback = arg5
+                end
+            elseif type(arg4) == "function" then
+                callback = arg4
+                if type(arg5) == "boolean" then
+                    isMulti = arg5
+                end
+            end
+
+            if type(defaultSelected) == "table" then
+                isMulti = true
+            end
 
             local isDropped = false
-            local selectedOption = defaultSelected
+            local selectedOption = (not isMulti and (defaultSelected or options[1] or "Select")) or nil
+            local selectedMap = {}
+
+            if isMulti then
+                if type(defaultSelected) == "table" then
+                    for _, v in ipairs(defaultSelected) do
+                        selectedMap[v] = true
+                    end
+                elseif type(defaultSelected) == "string" and defaultSelected ~= "" then
+                    selectedMap[defaultSelected] = true
+                end
+            end
+
+            local function getSelectedList()
+                local list = {}
+                for _, opt in ipairs(options) do
+                    if selectedMap[opt] then
+                        table.insert(list, opt)
+                    end
+                end
+                return list
+            end
+
+            local function formatSelectedSummary()
+                if not isMulti then
+                    return tostring(selectedOption or "Select")
+                end
+                local list = getSelectedList()
+                if #list == 0 then
+                    return "None"
+                elseif #list == 1 then
+                    return list[1]
+                else
+                    return tostring(#list) .. " Selected"
+                end
+            end
 
             local Card = Instance.new("Frame")
             Card.Size = UDim2.new(1, 0, 0, 48)
@@ -2094,7 +2146,7 @@ function CartoonUI.CreateWindow(config)
             SelectedLabel.BackgroundColor3 = Theme.Sidebar
             SelectedLabel.BorderSizePixel = 0
             SelectedLabel.Font = Theme.FontRegular
-            SelectedLabel.Text = selectedOption
+            SelectedLabel.Text = formatSelectedSummary()
             SelectedLabel.TextColor3 = Theme.TextDark
             SelectedLabel.TextSize = 12
             addCorner(SelectedLabel, 8)
@@ -2137,10 +2189,11 @@ function CartoonUI.CreateWindow(config)
             for _, opt in ipairs(options) do
                 local OptBtn = Instance.new("TextButton")
                 OptBtn.Size = UDim2.new(1, 0, 0, 32)
-                OptBtn.BackgroundColor3 = (opt == selectedOption) and Theme.Yellow or Theme.CardDark
+                local isInitialSelected = isMulti and (selectedMap[opt] == true) or (opt == selectedOption)
+                OptBtn.BackgroundColor3 = isInitialSelected and Theme.Yellow or Theme.CardDark
                 OptBtn.BorderSizePixel = 0
                 OptBtn.Font = Theme.FontBold
-                OptBtn.Text = opt
+                OptBtn.Text = (isMulti and (selectedMap[opt] and "✓ " or "") or "") .. opt
                 OptBtn.TextColor3 = Theme.TextDark
                 OptBtn.TextSize = 13
                 addCorner(OptBtn, 8)
@@ -2148,21 +2201,34 @@ function CartoonUI.CreateWindow(config)
                 OptBtn.Parent = OptionsContainer
 
                 OptBtn.MouseButton1Click:Connect(function()
-                    selectedOption = opt
-                    SelectedLabel.Text = opt
-                    for _, child in pairs(OptionsContainer:GetChildren()) do
-                        if child:IsA("TextButton") then
-                            child.BackgroundColor3 = (child.Text == opt) and Theme.Yellow or Theme.CardDark
+                    if isMulti then
+                        selectedMap[opt] = not selectedMap[opt]
+                        OptBtn.BackgroundColor3 = selectedMap[opt] and Theme.Yellow or Theme.CardDark
+                        OptBtn.Text = (selectedMap[opt] and "✓ " or "") .. opt
+                        SelectedLabel.Text = formatSelectedSummary()
+                        local currentList = getSelectedList()
+                        pcall(callback, currentList)
+                    else
+                        selectedOption = opt
+                        SelectedLabel.Text = opt
+                        for _, child in pairs(OptionsContainer:GetChildren()) do
+                            if child:IsA("TextButton") then
+                                child.BackgroundColor3 = (child.Text == opt) and Theme.Yellow or Theme.CardDark
+                            end
                         end
+                        toggleDropdown()
+                        pcall(callback, opt)
                     end
-                    toggleDropdown()
-                    pcall(callback, opt)
                 end)
             end
 
             return {
                 GetSelected = function()
-                    return selectedOption
+                    if isMulti then
+                        return getSelectedList()
+                    else
+                        return selectedOption
+                    end
                 end
             }
         end
