@@ -3,9 +3,20 @@ local lplr = players.LocalPlayer
 local replicatedStorage = game:GetService('ReplicatedStorage')
 local lastCF, stop, heartbeatConnection
 
+local function isKillerChar()
+    local myTeam = lplr.Team and lplr.Team.Name
+    if myTeam == "Killer" or myTeam == "Slasher" then return true end
+    if lplr:GetAttribute("SelectedKiller") ~= nil then return true end
+    local c = lplr.Character
+    if c and (c:GetAttribute("IsCarrying") ~= nil or c:GetAttribute("successswingendlag") ~= nil) then
+        return true
+    end
+    return false
+end
+
 local function start()
     heartbeatConnection = game:GetService('RunService').Heartbeat:Connect(function()
-        if stop then
+        if stop or isKillerChar() then
             return 
         end 
         local hum = lplr.Character and lplr.Character:FindFirstChildOfClass('Humanoid')
@@ -14,7 +25,7 @@ local function start()
         end
     end)
     lplr.Character:FindFirstChildOfClass('Humanoid').RootPart:GetPropertyChangedSignal('CFrame'):Connect(function()
-        if not lastCF then return end
+        if stop or isKillerChar() or not lastCF then return end
         stop = true
         lplr.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame = lastCF
         game:GetService('RunService').Heartbeat:Wait()
