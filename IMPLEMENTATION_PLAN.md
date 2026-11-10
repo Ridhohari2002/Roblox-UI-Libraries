@@ -40,12 +40,12 @@ The documentation set is internally reconciled for the ban, reversal, and reacti
 
 - **One project:** a single Next.js App Router application with TypeScript, serving the public site, user dashboard, admin dashboard, and API. This is Model A, approved as D1.
 - **One API entry point:** the only API Route Handler is `app/api/[...path]/route.ts`, which dispatches to modules under `src/`. No root `api/` directory is mixed into a Next.js app, and no second `route.ts` exists under `app/api/`.
-- **Runtime and hosting:** Node.js runtime on Vercel, with Vercel Pro recommended for commercial use pending D1a approval, plus Supabase PostgreSQL and Supabase Storage.
+- **Runtime and hosting:** Node.js runtime, with PostgreSQL and object storage from Supabase. **Hosting is not selected.** D1a is **UNAPPROVED — DEFERRED**; Vercel Pro appears throughout this plan only as the historical research baseline, and Helipod VPS S Jakarta only as an unapproved candidate. Nothing in this document should be read as a chosen or approved host. See Section 5.2.8.
 - **Data access:** direct parameterized SQL over the Supavisor pooled connection, wrapped by a small typed query layer. Transactions, row locks, and conditional updates are required by Sections 8 and 9 and are awkward through a REST client.
 - **Authentication:** custom Discord OAuth with a server-side `sessions` table, because Section 9.11 requires opaque, hashed, revocable sessions and `logout-all`. Same-origin requests keep session cookies first-party.
-- **Payments:** a provider-independent `PaymentVerifier` interface. No provider is selected in the documentation, so provider choice remains an owner decision.
+- **Payments:** a provider-independent `PaymentVerifier` interface. No provider is selected in the documentation, so provider choice remains an owner decision. **Owner decision 2026-11-11 (Section 5.4.9): Midtrans and Duitku are both retained candidates with eligibility pending. The owner has not registered with either and will submit eligibility assessments to both in parallel; selection follows the first written, product-specific approval. The payment adapter is BLOCKED and D3 remains UNAPPROVED.** Stripe is not available to an Indonesian merchant; Xendit was dropped on its fee structure.
 - **Testing:** Vitest for units and integration, Playwright for end-to-end, plus direct SQL tests for constraints and concurrency.
-- **Monitoring:** structured JSON logs plus the `audit_logs` and `script_access_logs` tables as durable records. Vercel runtime logs last one hour on Hobby and one day on Pro; neither is an audit store.
+- **Monitoring:** structured JSON logs plus the `audit_logs` and `script_access_logs` tables as durable records. Platform runtime logs are short-lived on every candidate (one hour to one day depending on plan) and are not an audit store.
 
 ### Sequencing principle
 
@@ -229,7 +229,7 @@ The browser never talks to PostgreSQL directly. All application data access goes
 
 ### 3.5 Authentication and Discord OAuth
 
-1. `GET /api/auth/login` generates a high-entropy `state`, stores it in a short-lived HTTP-only cookie or an `oauth_states` row, and redirects to Discord with the `identify` scope.
+1. `GET /api/auth/login` generates a high-entropy `state`, stores it in a short-lived HTTP-only cookie or an `oauth_states` row, and redirects to Discord with the `identify` scope. The `oauth_states` row is the Option A mechanism described in Section 5.3.5; it is conditional on D2 resolving to Option A.
 2. Discord redirects to `GET /api/auth/callback?code=...&state=...`.
 3. The server rejects a missing or mismatched state, exchanges the code server-side with the client secret, fetches `/users/@me`, and upserts the user by immutable `discord_id`.
 4. The server creates a session row with a hashed opaque token, sets an HTTP-only, Secure, SameSite cookie, and redirects to the dashboard.
@@ -302,7 +302,8 @@ The browser never talks to PostgreSQL directly. All application data access goes
 
 ### 3.13 Deployment, monitoring, and backups
 
-- Hosting tier is not approved (D1a). Vercel Pro is recommended because the platform is commercial; Hobby is restricted to non-commercial personal use.
+- Hosting is **not selected**. D1a is **UNAPPROVED — DEFERRED** (Section 5.2.8). Vercel Pro is the historical research baseline only, retained for comparison; it is not a recommendation and not an approval. The platform is commercial, so Vercel Hobby would be ineligible if Vercel were ever selected.
+- The Vercel limits below are retained as the planning baseline for cost and duration sensitivity. They describe platform ceilings, not an approved plan, and they do not bind the final host choice.
 - Pro limits assumed for planning: 4.5 MB request and response body, 300 second default duration with up to 800 seconds configured, 4 GB and 2 vCPU per instance, 250 MB bundle, 1,024 file descriptors, multiple regions, one day runtime log retention, 6,000 deployments per day.
 - Hobby comparison, retained for cost sensitivity: 300 second maximum duration, 2 GB and 1 vCPU, 4.5 MB body, 250 MB bundle, single region, one hour runtime logs, one concurrent deployment.
 - One API function under `/api`, many modules. Next.js also emits page and middleware functions; verify the deployed API function list after every configuration change.
@@ -331,13 +332,13 @@ The platform authorizes distribution of content the operator is permitted to dis
 | Data access | `pg` driver plus Kysely query builder, with explicit SQL for locks | Yes, alternative is the Supabase client |
 | Validation | Zod schemas shared by handlers and OpenAPI | No, small justified dependency |
 | Authentication | Custom Discord OAuth with a server-side `sessions` table | Yes, alternative is Supabase Auth |
-| Payments | Provider-independent `PaymentVerifier`, Stripe as the default candidate | Yes, no provider is named in the spec |
+| Payments | Provider-independent `PaymentVerifier`; **Midtrans and Duitku are both candidates with eligibility pending** (owner decision 2026-11-11, D3 unapproved). Stripe is not available to an Indonesian merchant; Xendit was dropped on its fee structure | Yes, no provider is named in the spec |
 | Background jobs | Vercel Cron calling a protected route, backed by a `jobs` table | Yes, scheduler choice |
 | Caching | None initially; optional external Redis only if measurements require it | Yes if added |
 | API documentation | OpenAPI 3.1 generated from Zod schemas | No |
 | Testing | Vitest, Playwright, and direct SQL constraint tests | No |
 | Logging and monitoring | Structured JSON logs, Vercel Observability, optional Sentry | Yes for the paid vendor |
-| Hosting | Vercel Pro recommended for commercial use, plus Supabase | Yes, D1a hosting tier |
+| Hosting | **Not selected.** D1a is UNAPPROVED — DEFERRED. Vercel Pro is the retained research baseline only; Helipod VPS S is an unapproved candidate | Yes, D1a hosting tier |
 | Storage | Supabase Storage with short-lived signed URLs | No, already specified |
 
 The stack deliberately stays small. The project already depends on Next.js, Vercel, Supabase, Discord, and two offer providers. Adding a second hosting platform, a separate backend framework, or a message broker would be unjustified at this scale.
@@ -421,14 +422,14 @@ The stack deliberately stays small. The project already depends on Next.js, Verc
 
 ---
 
-### 4.9 Payments: provider-independent interface with Stripe as the candidate
+### 4.9 Payments: provider-independent interface, Midtrans and Duitku both pending
 
 - **Why it fits:** Section 7.5 requires an abstract `PaymentVerifier` with one implementation per provider. No provider is named in the specification.
 - **Advantages:** The domain code stays provider-neutral. Adding or replacing a provider is an adapter change. Webhook verification, idempotency, and reconciliation have one contract.
 - **Disadvantages:** An abstraction has a cost. Provider-specific features such as taxes, subscriptions, and dispute handling still leak into operations.
 - **Operational complexity:** Moderate. Requires a provider account, webhook endpoint, signing secret, reconciliation job, and sandbox testing.
-- **Alternatives:** Stripe, Paddle, Lemon Squeezy, PayPal. Selection depends on the owner's country, payout requirements, tax handling, and fees.
-- **Dependency verdict:** The interface is justified. A specific SDK is not installed until the owner selects a provider. **Owner approval required.**
+- **Candidates assessed 2026-11-11 (Section 5.4):** **Midtrans and Duitku are both retained, both pending written eligibility approval** — neither is selected. Xendit was dropped on a conditional USD 50/month minimum fee that triggers at this volume; Stripe is unavailable in Indonesia (Preview, contact-sales only). Non-Indonesian options such as Paddle, Lemon Squeezy, and PayPal were not part of this review because the operating entity and target market are Indonesian and those processors do not settle IDR to an Indonesian merchant account on the same terms.
+- **Dependency verdict:** The interface is justified. A specific SDK is not installed until the owner selects a provider. **D3 is reviewed but UNAPPROVED; the payment adapter is BLOCKED. Selection requires the eight-item written eligibility checklist in Section 5.4.9 to be satisfied first.**
 
 ### 4.10 Background jobs: Vercel Cron plus a Postgres job table
 
@@ -476,16 +477,16 @@ The stack deliberately stays small. The project already depends on Next.js, Verc
 - **Dependency verdict:** A small logger such as Pino is justified for redaction and consistent fields. A paid vendor is optional and requires approval.
 - **Retention:** Vercel runtime logs last one hour on Hobby and one day on Pro. Neither replaces the audit tables.
 
-### 4.15 Hosting and deployment: Vercel Pro recommended, D1a unapproved
+### 4.15 Hosting and deployment: not selected, D1a deferred
 
-- **Status:** D1a is unapproved. D1 selects the deployment model, not the hosting plan.
-- **Commercial eligibility:** Vercel Hobby is limited to non-commercial personal use. A subscription platform with payment processing is commercial, so Pro or Enterprise is required.
-- **Recommendation:** Vercel Pro for one deploying seat. The plan fee includes a usage credit; usage beyond it is billed on demand.
-- **Why it fits:** Sections 2.2, 3, and 12 select Vercel. Pro adds commercial eligibility, 300 second default and up to 800 second function duration, 4 GB and 2 vCPU, minute-level cron, one day runtime logs, and 6,000 deployments per day.
-- **Disadvantages:** Recurring platform fee, on-demand overage risk, optional Password Protection is charged per protected project, and Supabase is billed separately.
-- **Operational complexity:** Low. The main risks are platform limits, usage growth, and pricing changes.
-- **Alternatives:** Vercel Enterprise, Netlify, Cloudflare, or a VPS. Enterprise is unnecessary at this scale. A VPS adds patching, monitoring, and backup work.
-- **Dependency verdict:** Vercel is already specified. The hosting tier requires owner approval as D1a.
+- **Status:** D1a is **UNAPPROVED — DEFERRED** (Section 5.2.8). D1 selects the deployment model, not the hosting plan. No host is chosen, and this subsection is research retained for comparison.
+- **Commercial eligibility constraint:** any host must permit commercial use, because the platform sells subscriptions and processes payments. Vercel Hobby is limited to non-commercial personal use, so Vercel would require Pro or Enterprise if it were ever selected. This is a constraint on any future choice, not a selection.
+- **Historical baseline, not a recommendation:** earlier revisions of this plan recommended Vercel Pro for one deploying seat. That recommendation was **superseded by the owner's deferral** and is retained only as the cost and limits baseline against which other options were compared. It must not be read as an approved or preferred host.
+- **Why the research is retained:** Sections 2.2, 3, and 12 of `BACKEND.md` name Vercel, and the Vercel figures are the yardstick used in Section 5.2 to compare Render, Railway, Cloudflare, and the Helipod VPS candidate. Deleting it would remove the comparison basis. It is not an approval.
+- **Disadvantages:** recurring platform fee, on-demand overage risk, optional Password Protection charged per protected project, and Supabase billed separately.
+- **Operational complexity:** Low for a managed platform. A VPS alternative trades that for OS patching, TLS renewal, process supervision, and backup verification.
+- **Alternatives still on the table:** the Helipod VPS S Jakarta candidate (unverified, owner-supplied), Render, Railway, Cloudflare Workers (rejected for D1 incompatibility), and the Vercel baseline. **None is approved.** See Section 5.2.8 for the full candidate record and unverified terms.
+- **Dependency verdict:** Vercel is named in `BACKEND.md`, but the hosting tier and provider require owner approval as D1a. Procurement, account registration, domain purchase, and deployment are blocked until then.
 
 ### 4.16 Storage: Supabase Storage
 
@@ -516,7 +517,7 @@ The specification resolves the domain model but leaves several implementation an
 | D1 | Deployment model A or B | Model A: one Next.js app with `app/api/[...path]/route.ts`, Node.js runtime | Keeps frontend and backend in one deployable unit and avoids mixing root `api/` with Next.js | Phase 1 | **FINAL — OWNER APPROVED** |
 | D1a | Hosting tier and commercial terms | **DEFERRED by owner on 2026-11-10.** Helipod VPS S Jakarta is a candidate only, not approved | Budget target is approximately IDR 100,000/month all-in; no provider is approved and procurement is postponed until funds are available | Hosting procurement, account registration, domain purchase, database subscription, deployment, and production launch. It does **not** block architecture, schema, security, or review work | **UNAPPROVED — DEFERRED** |
 | D2 | Session ownership | **RECOMMENDED (reviewed 2026-11-11, not yet approved):** custom Discord OAuth with a `sessions` table. Supabase Auth assessed and not recommended. See Section 5.3 | Exact control of hashed opaque tokens, revocation, rotation, and audit; Supabase Auth's JWT sessions cannot meet the Section 9.11 revocation requirement without added infrastructure | Phase 2 | **REVIEWED — OWNER APPROVAL REQUIRED** |
-| D3 | Payment provider | Stripe as the candidate, behind the `PaymentVerifier` interface | No provider is named in the spec; checkout and webhooks cannot be built without one | Phase 6 | Unapproved |
+| D3 | Payment provider | **REVIEWED 2026-11-11, updated by owner decision 2026-11-11, UNAPPROVED:** Midtrans and Duitku are **both retained candidates with eligibility pending** — neither is selected. The owner has not registered with either and will submit eligibility assessments to both in parallel; selection follows the first **written, product-specific** approval, not response order or onboarding speed. Xendit was dropped on a conditional USD 50/month minimum fee that triggers at this volume; Stripe is not available to an Indonesian merchant. See Section 5.4, especially 5.4.9 | No provider is named in the spec; checkout and webhooks cannot be built without one. **The payment adapter is BLOCKED until the eight-item written eligibility checklist in Section 5.4.9 is satisfied** | Phase 6 | **REVIEWED — OWNER APPROVAL REQUIRED** |
 | D4 | Free-key eligibility | Offer completion required, plus a per-user rate limit and a cap | Prevents offer farming while preserving the documented free-key flow | Phase 7 | Unapproved |
 | D5 | HWID source and normalization | Per-platform trusted source, versioned canonical string, HMAC-SHA-256 with `HWID_HASH_SECRET` | The hash is only meaningful if the input is stable and documented | Phase 4 | Unapproved |
 | D6 | Moderator capabilities | No ban, reversal, reactivation, or evidence permissions; limited non-sensitive operations only | Section 10 assigns all six ban permissions to admin only | Phase 8 | Unapproved |
@@ -533,7 +534,7 @@ The specification resolves the domain model but leaves several implementation an
 | D17 | Error-tracking vendor | Start with Vercel Observability; add Sentry only if needed | A paid vendor is not required for correctness | Phase 9 | Unapproved |
 | D18 | Roblox integration credentials | Per-place server credential, HMAC with timestamp and nonce | Section 9.13 requires server-side authentication, not client trust | Phase 4 | Unapproved |
 
-D1 is resolved. D1a, D2, D3, D8, D10, and D11 should be resolved before Phase 1 ends. D5 and D18 should be resolved before Phase 4. D4, D9, and D12 to D14 should be resolved before their owning phases. D7 and D17 can wait until hardening, but delaying D7 too long complicates table design.
+D1 is resolved. D1a is resolved **as deferred** by the owner, which closes the planning gate without approving any provider; its procurement block remains in force. **D3 was reviewed on 2026-11-11 and updated by owner decision on 2026-11-11; it remains UNAPPROVED, with Midtrans and Duitku both pending written eligibility approval and the payment adapter blocked.** D2, D3, D8, D10, and D11 should be resolved before Phase 1 ends. D5 and D18 should be resolved before Phase 4. D4, D9, and D12 to D14 should be resolved before their owning phases. D7 and D17 can wait until hardening, but delaying D7 too long complicates table design.
 
 ### 5.1 D1 - Deployment model (FINAL)
 
@@ -722,7 +723,7 @@ This ranking is historical and is **not an approval**. The owner deferred procur
 
 **Rejected for D1: Cloudflare Workers.** It is the cheapest at **$30.00-$36.90/month**, but it is not a conventional Node.js host, the recommended Next.js path is beta `vinext`, and the 128 MB memory ceiling is a hard production risk. Selecting it would require reopening D1 and accepting a different runtime model, not just a cheaper plan.
 
-**Fallback: Vercel Pro at about $45/month plus Supabase.** It remains the least risky Next.js integration and the known baseline, but it is not cheaper than the Render or Railway Hobby options.
+**Fallback (historical, not approved): Vercel Pro at about $45/month plus Supabase.** It remains the least risky Next.js integration and the known baseline, but it is not cheaper than the Render or Railway Hobby options. Like every option in this subsection, it is a research artifact and not an approval; D1a is deferred (Section 5.2.8).
 
 #### 5.2.7 Technical risks and unresolved questions
 
@@ -933,6 +934,8 @@ Reasons, in order of weight:
 
 #### 5.3.5 Exact schema implications for Phase 1
 
+**Conditional, not optional.** `oauth_states` is required only if D2 resolves to Option A. It appears here because Section 5.3 recommends Option A. If the owner selects Option B, the table is not created; while D2 is undecided, it must not be assumed. Phase 1 may prepare the table for Option A without treating D2 as approved, provided the conditional status is recorded in the migration itself.
+
 Option A introduces **one new support table**, `oauth_states`, alongside the `sessions` table already specified. `BACKEND.md` Section 8.2 defines:
 
 **`sessions`** — `id` uuid PK; `user_id` uuid FK `users(id)` on delete cascade; `token_hash` text unique not null; `user_agent` text; `ip` text; `expires_at` timestamptz not null; `revoked_at` timestamptz; `created_at` timestamptz. Unique on `token_hash`; indexes on `user_id` and `expires_at`.
@@ -987,7 +990,7 @@ Severity and likelihood in this table are **analyst estimates** on the same ordi
 | Q7 | Is PKCE adopted, and is it mandatory or recommended? | Adds a `code_verifier` to the flow and one more failure mode; adds defense against authorization-code interception. Discord advertises `S256` in its metadata but does not document enforcement, and its prose docs do not enumerate the parameters (§5.3.2.1). | Adopt PKCE, but label it required only after a sandbox run confirms Discord honors `code_verifier`. Until then it is defense in depth, not a hard gate. | Phase 2 |
 | Q8 | Is a session visible to the user (device list with self-revoke)? | Section 9 does not define a session-management endpoint. It changes the endpoint list, not the schema. | Add `GET /api/auth/sessions` and `DELETE /api/auth/sessions/{id}` as owner-scoped, non-admin routes. | Phase 2 |
 | Q9 | Do login and logout failures emit an audit row at `info` severity, or only at `warn` for anomalies? | Audit volume and signal-to-noise in `audit_logs`. | Audit every login, logout, and logout-all; log failed callbacks as warnings with a request ID and no PII. | Phase 2 |
-| Q10 | Does the application need a browser-side Supabase client (Realtime, direct Data API calls, or client-side token refresh), or is all authentication server-side inside the catch-all handler? | This single decision determines whether `HttpOnly` remains available under Option B and whether its refresh path requires a proxy layer. It is the hinge for §5.3.2.2. | Server-only authentication. No browser-side Supabase client. | Phase 1, Phase 2 |
+| Q10 | Does the application need a browser-side Supabase client (Realtime, direct Data API calls, or client-side token refresh), or is all authentication server-side inside the catch-all handler? | **Conditional question — relevant only if Option B (Supabase Auth) is approved.** Under Option A it is moot, because no Supabase Auth client exists in the browser. If Option B is approved, this single decision determines whether `HttpOnly` remains available and whether its refresh path requires a proxy layer. It is the hinge for §5.3.2.2. | Server-only authentication. No browser-side Supabase client. | Phase 1 and Phase 2 **only if Option B is approved**. Under Option A it blocks nothing and is recorded as not applicable. |
 | Q11 | Which of the four controls in §5.3.2.4 are treated as hard requirements: state validation, PKCE, cookie hardening, or immediate revocation? | The answer determines whether Option B is viable at all, or whether it must be rebuilt on a session table. | State validation and immediate revocation are hard; PKCE and cookie hardening are strong preferences. | Phase 2 |
 
 These questions are additional to, and consistent with, the existing D2 and U2 entries. None of them is resolved by this review.
@@ -1012,6 +1015,320 @@ These questions are additional to, and consistent with, the existing D2 and U2 e
 **Method note:** this was a documentation review. Every severity, likelihood, and cost figure in §5.3.2 through §5.3.6 is an analyst estimate. Nothing in this section is a measurement, and nothing here should be quoted as verified test evidence.
 
 **Recommendation standing:** Option A remains the recommendation and remains **UNAPPROVED**. Corrections in this revision narrowed two claims that were overstated — the PKCE reasoning and the cookie default — without changing the recommendation, because the revocation argument rests on documented behavior. Whether that recommendation survives is the owner's decision at Q1, Q2, and Q11.
+
+### 5.4 D3 - Payment provider (REVIEWED, UNAPPROVED; two candidates pending eligibility)
+
+**Status:** Reviewed 2026-11-11, then updated by owner decision on 2026-11-11. **D3 remains UNAPPROVED.** This section is a technical and operational review built from official provider documentation, plus the owner's recorded selection procedure in §5.4.9. It selects no provider, authorizes no merchant account, and authorizes no code. **Midtrans and Duitku are both candidates with eligibility pending; provider selection is pending written eligibility approval; the payment adapter is BLOCKED.** Phase 6 requires an affirmative owner decision and a written, product-specific approval from the selected provider.
+
+The project context that constrains every option: the operating entity and target market are **Indonesia**, plans are priced in **IDR**, products are **monthly, 3-month, and 6-month** periods, and `BACKEND.md` §7.2 defines renewal as a *new payment that creates a new period*, not an automatic charge.
+
+#### 5.4.1 Mandatory requirements extracted from BACKEND.md
+
+| Requirement | Source | Consequence for provider selection |
+|---|---|---|
+| Provider-independent `PaymentVerifier`, one implementation per provider | §7.5 | No provider SDK may be imported outside `src/providers/payments/*` |
+| Signed server callback is the only proof of payment | §7.5 | A browser redirect, `finish` page, or client state is never evidence |
+| Verify signature, persist a `payment_events` row, then mark `paid` and grant | §7.5, §8.2, §9.7 | Requires raw-body access and a unique event key |
+| Idempotency and replay protection | §7.5, §9.7 | Unique `(provider, provider_event_id)`; duplicates acknowledge without granting |
+| Audit logging for payment events | §11 | `audit_logs` row per accepted or rejected event |
+| Reconciliation job queries the provider for pending transactions | §7.5 | The provider must expose a status/query API, not only webhooks |
+| Amount is computed server-side from `plans.price_minor` | §7.5, §8.2, §9.7 | Provider must accept an amount we choose per transaction |
+| Store `provider`, `provider_txn_id`, `amount_minor`, `currency`, `status` | §8.2 | Provider transaction id must be stable and unique per provider |
+| Plans by `duration_days`, code `monthly` / `3month` / `6month` | §7.2, §8.2 | One-time period payment is sufficient; auto-renewal is not required |
+| Renewal creates a new period; stacking extends `expires_at` | §7.2 | No stored card credential or token vault is required |
+| One webhook route `POST /api/webhooks/payments/{provider}` | §9.7 | Provider must be addressable by a single path segment |
+| Provider secrets server-only | §7.5, §11 | No key, server key, or token may reach the client bundle |
+
+**The decisive negative finding:** nothing in `BACKEND.md` requires native recurring billing, stored card tokens, or automatic charging. §7.2 explicitly models renewal as a fresh payment. Any provider capability beyond that is optional, and optional capability must not drive the choice.
+
+#### 5.4.2 Provider comparison
+
+| Capability | Midtrans | Xendit | Duitku | Stripe |
+|---|---|---|---|---|
+| Indonesian merchant onboarding | Yes, documented | Yes, documented, with an authorized-representative requirement | Yes, documented | No self-serve path: Indonesia is marked **Preview** and routes to contact-sales |
+| Individual (non-PT) merchant accepted | Yes: KTP + NPWP | Restricted: individual applications only as XP sub-accounts | Yes: KTP + NPWP + bank proof, all in the same name | Not applicable |
+| Indonesian payment methods | Bank transfer/VA, cards, GoPay, ShopeePay, QRIS, minimarket, cardless credit, e-banking | VA (BCA, BNI, BRI, BSI, Mandiri, Permata, CIMB, BNC, Muamalat, BSS), cards, OVO, DANA, LinkAja, ShopeePay, JeniusPay, AstraPay, QRIS, Alfamart, Indomaret, Kredivo, Indodana, Akulaku | VA (BCA, BNI, BRI, Mandiri, Permata, CIMB, Danamon, BSI, Artha Graha, Sahabat Sampoerna), cards, OVO, DANA, LinkAja, ShopeePay, QRIS, Indomaret, Alfamart, Pegadaian, POS, JeniusPay, Indodana, Atome | Not applicable in Indonesia |
+| Native recurring/subscription | Yes: Subscription API, card token or GoPay tokenization, `interval_unit: month`, `max_interval: 12`, configurable retry schedule | Yes: requires a Merchant-Initiated-Transaction channel; retry and deactivation options | **No.** The Nov 2025 changelog removed `isSubscription` and `subscriptionDetail` from the inquiry request | Not applicable |
+| Refund API | Yes, no additional refund fee, requires `settlement` status, only for supported channels | Yes, refund webhooks, **each refund charged a processing fee** | **Split by API surface, not a flat "no".** Direct API: no refund endpoint; the published FAQ states refunds are not provided and are handled by the merchant. **SNAP API: a Debit Payment Refund endpoint exists, but it is gated behind ASPI registration (~14 business days). Direct Credit Card: both `void` (pre-settlement) and `refund` (post-settlement) endpoints exist.** Activation, eligibility, and cost are unconfirmed | Not applicable |
+| Dispute/chargeback handling | Card chargebacks documented | Card chargeback fee **USD 25**, local-method chargeback fee **USD 15** | Not documented in the material reviewed | Not applicable |
+| Sandbox environment | Yes, separate credentials and a sandbox IP | Yes | Yes, `sandbox.duitku.com` | Not applicable |
+| Status/query API for reconciliation | Yes (Status API) | Yes (payment request status) | Yes (Check Transaction) | Not applicable |
+| Published webhook retry policy | Yes, status-code matrix | Yes, six retries with backoff table | Yes, five attempts then email, plus dashboard resend | Not applicable |
+| Published webhook IP allowlist | Yes, production and sandbox ranges | Not published in the pages reviewed | **Split by API product.** SNAP API publishes production and sandbox callback IP addresses. No equivalent published list was found for the standard Direct API callback | Not applicable |
+| Fixed or minimum monthly fee | **None** | **USD 50 monthly minimum** | **None** | Not applicable |
+
+#### 5.4.3 Official sources
+
+Checked on 2026-11-11. Every row in §5.4.2 and §5.4.4 traces to one of these.
+
+**Midtrans**
+
+- Webhooks and redirect URLs: `https://docs.midtrans.com/docs/https-notification-webhooks`
+- Notification best practice and status checks: `https://docs.midtrans.com/reference/best-practices-to-handle-notification`
+- Notification retry matrix: same page as above
+- Notification failure and IP allowlist: `https://docs.midtrans.com/docs/why-did-i-not-receive-any-http-notification-from-midtrans-system`
+- Account legal documents: `https://docs.midtrans.com/docs/what-are-the-legal-documents-required-for-midtrans-account-registration`
+- Fee structure and VAT: `https://docs.midtrans.com/docs/how-much-does-midtrans-charge-for-its-payment-service`
+- QRIS MDR: `https://docs.midtrans.com/docs/what-is-the-applicable-transaction-fee-for-qris`
+- Refund fees: `https://docs.midtrans.com/docs/will-i-be-charged-for-chargebacks-or-refunds`
+- Recurring and tokenization: `https://docs.midtrans.com/docs/one-click-two-clicks-and-recurring-transaction`
+- Subscription API: `https://docs.midtrans.com/reference/create-subscription`
+- Payout and withdrawal timing: `https://docs.midtrans.com/docs/how-can-i-have-my-money-in-my-account-payout`
+- Transaction minimums and maximums: `https://docs.midtrans.com/docs/is-there-a-minimum-and-maximum-transaction-value-that-i-can-charge-with-midtrans`
+- Prohibited business categories: `https://docs.midtrans.com/docs/can-all-types-of-businesses-accept-payments-through-midtrans`
+- Published price list: `https://midtrans.com/pricing`
+
+**Xendit**
+
+- Handling webhooks, deduplication, `x-callback-token`: `https://docs.xendit.co/docs/handling-webhooks`
+- Webhook event catalogue: `https://docs.xendit.co/docs/payments-api-webhooks`
+- Retry and manual resend: `https://docs.xendit.co/apidocs/webhook-behavior`
+- HMAC callback headers: `https://docs.xendit.co/apidocs/payment-status-callback-webhook`
+- Fees and deductions: `https://docs.xendit.co/docs/transaction-fees`
+- Pricing policy, minimum and chargeback fees: `https://help.xendit.co/hc/en-us/articles/59516240127129-Xendit-Pricing-Policy`
+- Settlement timing: `https://docs.xendit.co/docs/settlements-overview`
+- Subscriptions: `https://docs.xendit.co/docs/how-subscriptions-work`
+- Verification and authorized representative: `https://docs.xendit.co/docs/verifying-your-account`
+- Indonesia documents and individual restriction: `https://docs.xendit.co/docs/indonesia-business-documents`
+
+**Duitku**
+
+- Price list, refund policy, withdrawal timing, PPn statement: `https://www.duitku.com/harga`
+- FAQ, refund-by-channel statements, disbursement conditions, transaction limits: `https://www.duitku.com/frequently-asked-questions/`
+- Direct API reference, inquiry and callback signatures, changelog: `https://docs.duitku.com/api/en/`
+- SNAP API reference, Debit Payment Refund endpoint, callback IP allowlist, SNAP registration: `https://docs.duitku.com/snap-api/id/`
+- Direct Credit Card reference, `void` and `refund` endpoints: `https://docs.duitku.com/direct-credit-card/id/`
+- Merchant documents and NPWP FAQ: `https://www.duitku.com/faq/`
+
+**Stripe**
+
+- Country availability: `https://stripe.com/global`
+
+#### 5.4.4 Transaction costs (checked 2026-11-11)
+
+All figures are IDR per successful transaction as published by the provider. Effective percentages are analyst arithmetic for illustration only, using a **Rp 50,000** and a **Rp 100,000** plan price; they are not quoted rates.
+
+**Midtrans** — no setup fee, no monthly fee, charged per successful transaction.
+
+| Channel | Published fee | VAT treatment | Effective at Rp 50,000 | Effective at Rp 100,000 |
+|---|---|---|---|---|
+| Bank transfer / VA | Rp 4,000 flat | Excluded; 11% VAT applies on the fee | Rp 4,440 (8.9%) | Rp 4,440 (4.4%) |
+| QRIS | 0.7% | Inclusive | Rp 350 (0.7%) | Rp 700 (0.7%) |
+| GoPay | 2% | Inclusive | Rp 1,000 (2.0%) | Rp 2,000 (2.0%) |
+| ShopeePay | 2% | Inclusive | Rp 1,000 (2.0%) | Rp 2,000 (2.0%) |
+| Other e-wallets | 1.5% | Excluded | Rp 833 (1.7%) | Rp 1,665 (1.7%) |
+| Credit card | 2.9% + Rp 2,000 | Excluded | Rp 3,450 (6.9%) | Rp 4,900 (4.9%) |
+| Minimarket | Rp 5,000 flat | Excluded | Rp 5,550 (11.1%) | Rp 5,550 (5.6%) |
+
+The published page adds a caveat that must not be lost: **"Gaming & digital product companies are subject to different rates."** The actual rate for this business category is not published and cannot be obtained without contacting Midtrans. Every Midtrans figure above is therefore an *upper bound assumption*, not a quote for this merchant.
+
+**Duitku** — no setup fee, no monthly fee, charged per successful transaction. The published page states that **all displayed prices already include PPn (VAT)** and that there are no hidden fees.
+
+| Channel | Published fee (VAT-inclusive) | Effective at Rp 50,000 | Effective at Rp 100,000 |
+|---|---|---|---|
+| Bank transfer / VA, general | Rp 3,000 | 6.0% | 3.0% |
+| Mandiri VA | Rp 4,000 | 8.0% | 4.0% |
+| BCA VA | Rp 5,000 | 10.0% | 5.0% |
+| QRIS | 0.7% | 0.7% | 0.7% |
+| OVO / DANA / LinkAja | 1.67% | 1.67% | 1.67% |
+| ShopeePay | 2% | 2.0% | 2.0% |
+| Credit card | 2.9% + Rp 2,500 | 7.9% | 5.4% |
+| Alfamart / Pegadaian / POS | Rp 2,500 | 5.0% | 2.5% |
+| Indomaret | Indomaret-set MDR + Rp 1,000 | not computable | not computable |
+
+At the Rp 50,000 price point Duitku's general VA is **Rp 4,440 versus Rp 3,000**, roughly a third cheaper than Midtrans after VAT. At Rp 100,000 the gap narrows to Rp 4,440 versus Rp 3,000, still in Duitku's favour.
+
+**Xendit** — three cost layers stack, and one of them is fatal at this scale.
+
+| Cost layer | Published amount | Note |
+|---|---|---|
+| Per-channel payment fee | Not verifiable here | `xendit.co/en/pricing` returned HTTP 403 to this review; the documented fee page defers to it |
+| Xendit Processing Fee | Additional fee on every payment acceptance, payout, and refund attempt | Introduced 1 Oct 2026; applies to failed card attempts too |
+| Refund fee | Each successful refund incurs its own processing fee | The original payment fee is retained |
+| Card chargeback dispute fee | **USD 25** per chargeback | Non-refundable regardless of outcome |
+| Local-method chargeback dispute fee | **USD 15** per dispute | Non-refundable |
+| **Monthly Minimum Fee** | **USD 50**, charged only to a **Dormant Account** or to an account whose **monthly invoice is below USD 50** | Conditional, not unconditional. See the note below |
+
+**The Monthly Minimum Fee is conditional and must not be stated as a flat charge on every account.** Xendit's pricing policy defines two triggers: (a) a **Dormant Account**, which Xendit defines as an account with **no transactions within 180 calendar days** after the go-live date or the last transaction date; or (b) a month in which the **total invoice, excluding chargeback fees, is below USD 50**. Where neither trigger applies, the fee does not apply. Xendit also advises closing a dormant account to avoid it.
+
+**Consequence for a low-volume merchant, which is the situation this project is in.** The fee is small for a merchant who transacts regularly, but this platform does not. Its realistic early profile is a handful of subscriptions per month, which means a monthly invoice well under USD 50 and the **second trigger firing every month**. At an assumed exchange rate of about IDR 16,000 per USD, the effective charge is roughly **IDR 800,000 per month** — about **eight times** the entire IDR 100,000/month hosting budget — until sustained transaction volume brings accrued fees above USD 50 on their own. The 180-day dormancy trigger is a separate risk during any quiet period. The rate is an assumption; the USD 50 amount and both triggers are verified.
+
+**Stripe** — not costed, because there is no self-serve Indonesian path to price.
+
+#### 5.4.5 Webhook security comparison
+
+| Control | Midtrans | Xendit | Duitku (Direct API) | Duitku (SNAP API) |
+|---|---|---|---|---|
+| Transport | `POST`, JSON body | `POST`, JSON body | `POST`, `application/x-www-form-urlencoded` | `POST`, JSON body |
+| Where the signature lives | Body field `signature_key` | Header, `x-callback-token` (token) or `X-Callback-Signature` + `X-Callback-Timestamp` (HMAC SHA256) | Body field `signature` | Request headers, `X-SIGNATURE` with `X-TIMESTAMP`, `X-PARTNER-ID`, `X-EXTERNAL-ID` |
+| Algorithm | `SHA512(order_id + status_code + gross_amount + ServerKey)` | HMAC SHA256 over the raw body with the callback token, plus a timestamp for replay windows | `HMAC_SHA256(merchantCode + amount + merchantOrderId, apiKey)` | SNAP symmetric/asymmetric signature scheme, per the SNAP specification |
+| Requires raw request body | Yes, to recompute the hash exactly | Yes, for the HMAC form | No, the form fields are sufficient; the hash covers three named fields | Yes, the JSON body is signed |
+| Replay protection provided by provider | Timestamp is not signed; deduplicate on `order_id` | `X-Callback-Timestamp` supports a window; deduplicate on `payment_id` / `capture_id` | No timestamp; deduplicate on `merchantOrderId` / `reference` | `X-TIMESTAMP` is part of the signed header set |
+| Documented duplicate behavior | Possible duplicates; `order_id` is the dedup key | Duplicates expected after retries; provider publishes server-side ids for dedup | Resends while HTTP 200 is not returned | Documented handling of double payments in the SNAP flow |
+| Retry policy | Matrix by response code: 2xx none, 500 once, 503 four, 400/404 twice, other five; 307/308 followed up to five times | Six retries at 15m, 45m, 2h, 3h, 6h, 12h | Five attempts, then an email; manual resend from the dashboard | Follows the SNAP registration and callback agreement; not stated as a fixed public matrix |
+| Source IP allowlist | Published production and sandbox ranges | Not published in the pages reviewed | **Not published** for the standard Direct API callback | **Published**: production and sandbox callback addresses |
+| Endpoint constraints | Must be public internet, standard port, no auth, no VPN, no IP-literal host, must not redirect | Public HTTPS endpoint | Public endpoint | Public endpoint, **default ports only (80/443)**, no custom port |
+| Provider-acknowledgement timeout | 15 seconds | Not stated as a fixed number; 2xx required | HTTP 200 required | Per SNAP callback contract |
+| Availability conditions | Standard merchant activation | Standard merchant activation | Standard merchant activation | **Requires SNAP registration and an ASPI recommendation letter; roughly 14 business days if no revision** |
+
+**Do not generalise across Duitku's products.** Duitku ships two distinct integration surfaces, and their security properties are not interchangeable. The **Direct API** is the older, simpler integration: a form-encoded callback secured by an HMAC over three fields, with no published IP allowlist. The **SNAP API** is the Bank Indonesia standard: a JSON body, a signed header set including a timestamp and partner identifiers, a published callback IP allowlist, and a registration gate in front of it. A design that assumes the SNAP properties while integrating against the Direct API would be wrong, and vice versa.
+
+All four surfaces can satisfy `BACKEND.md` §7.5. Midtrans offers the strongest published operational contract: a signed body field over an idempotent order id, a documented retry matrix, a published IP allowlist, and an explicit status-query backstop. Duitku's Direct API is the simplest to implement but the weakest on replay: its signature covers `merchantCode + amount + merchantOrderId` and carries no timestamp, so freshness must come entirely from our own dedup on `merchantOrderId`. That is acceptable only because §7.5 already requires idempotency on `(provider, provider_event_id)`. Duitku's SNAP surface closes most of that gap but adds a registration dependency before a single sandbox call can be verified.
+
+Xendit's `x-callback-token` scheme is a shared secret compared as a token, not a message MAC over the payload; its newer API surface adds a genuine HMAC plus timestamp. That is workable but means the adapter's verification code differs by which Xendit endpoint family is used.
+
+#### 5.4.6 Recurring versus manual payment
+
+**Recommendation: manual per-period payment. Do not adopt native recurring for Phase 6.**
+
+The reasoning is not a cost argument; it is a fit argument.
+
+- `BACKEND.md` §7.2 already defines the required behavior: a new payment creates a new subscription period, and stacking extends `expires_at`. Nothing in the specification asks for automatic charging.
+- Native recurring (Midtrans card or GoPay tokenization, Xendit MIT channels) requires storing a payment token tied to a saved credential. That adds a token vault, a PCI-scope conversation, a failed-payment dunning flow, and a new class of dispute where the user says they never authorised the later charge. None of that is in `BACKEND.md` §8.2.
+- Every supported recurring path discards the Indonesian channels most users actually hold. Midtrans subscription is card and GoPay only. Xendit subscriptions require a Merchant-Initiated-Transaction channel. A wallet-first Indonesian buyer would still pay manually.
+- Manual payment keeps the audit trail simple: one transaction, one webhook, one entitlement, one `payment_events` row. Auto-charge would require linking a provider-side cycle id to a local transaction, which is a second identity space in the schema.
+
+**What manual payment does not change, stated plainly.** Choosing manual renewal avoids **automatic recurring charges**. It does **not** remove, reduce, or defer any of the following, all of which must still be designed, tested, and funded:
+
+- **Refund obligations.** A user who is refused a refund still has a claim. Manual payment changes the mechanism, not the liability.
+- **Duplicate and double payments.** The customer pays twice, or a retry produces a second settled charge. This must be detected and refunded manually, which is precisely why Duitku's Direct API having no refund endpoint is an operational burden rather than a neutral fact.
+- **Chargebacks and disputes.** A card issuer can reverse a charge regardless of what our renewal model is. The dispute fee, the evidence deadline, and the entitlement reversal still apply.
+- **Fraud.** Stolen cards, account takeover, and abuse of the free-key path are unaffected by the renewal model.
+- **Consumer-protection and record-keeping duties.** A transaction record, a receipt, a stated refund policy, and a complaint path are owed to the buyer on their own footing, not because a subscription auto-renewed.
+- **Reconciliation exceptions.** A missed webhook or a delayed settlement still has to be repaired against the provider.
+
+**The honest summary:** manual payment solves one problem, the unauthorised-repeat-charge problem. It does not make the refund or dispute surface disappear, and any provider assessment that treats "no recurring" as "no refund exposure" is wrong. §5.4.10 Q17 requires a written policy either way.
+
+Native recurring therefore stays a **future option behind the adapter**, not a Phase 6 requirement. If the owner later wants it, it is an adapter addition plus a schema addition, not a redesign.
+
+#### 5.4.7 Vendor lock-in analysis
+
+| Lock-in surface | How strongly it binds | Mitigation already required by the plan |
+|---|---|---|
+| Webhook payload shape and signature algorithm | Moderate. Each provider differs enough that the parser is provider-specific | Confined to one adapter; `payment_events.raw_payload` preserves the original body |
+| Transaction identity | Low if we own the order reference. Midtrans uses `order_id`, Duitku uses `merchantOrderId`, Xendit uses its own ids plus our reference | Keep our own reference as the join key and store the provider id separately in `provider_txn_id` |
+| Checkout UI | Low to moderate. Midtrans Snap, Xendit Payment Session, Duitku redirect are all hosted pages | Checkout is a redirect plus a return route; no provider component is embedded in our pages |
+| Stored payment credentials | High where recurring is used | Avoided entirely by the manual-payment decision in §5.4.6 |
+| Settlement and payout cycle | Operational, not technical | Tracked in the reconciliation job, not in domain tables |
+| Merchant onboarding / KYC | **High and outside our control.** Re-onboarding is days to weeks and can be rejected | Cannot be mitigated in code; it is the real switching cost and belongs in the owner's decision |
+| Fees | Medium. Fee changes are unilateral | `amount_minor` is ours; fees are a margin input, not a stored value |
+
+Net: the technical switching cost is roughly **one adapter plus a re-onboarding cycle**. The `PaymentVerifier` boundary in `BACKEND.md` §7.5 is adequate. The binding constraint is merchant approval, not code.
+
+#### 5.4.8 Eligibility risk that outranks the technical comparison
+
+**Owner direction (2026-11-11): eligibility is decided by parallel written applications to both retained candidates. That process is recorded in §5.4.9.**
+
+This must be resolved before any provider is chosen, because a technically correct choice that cannot be onboarded is worthless.
+
+Midtrans publishes a prohibited-business list. Three entries bear directly on a paid game script product:
+
+- **"Selling Copyright-Infringing or Counterfeit Products"** — covering trademarks, copyrights, and patents.
+- **"Goods and/or Services Involving Hacking or Unauthorized Access."**
+- **"Game boosting or rank-up services (Joki)."**
+
+No document reviewed states how Midtrans classifies a paid automation script for a third-party game. **This review does not conclude that the product will be accepted, and it does not conclude that it will be rejected.** Both remain open. What is established is that the categories exist, that they are broad, and that an activation rejection is a realistic outcome that would strand Phase 6 after the work is done.
+
+**Eligibility review is mandatory for every candidate, including Duitku.** Duitku publishes a merchant document list and an operational FAQ but no readable prohibited-business list was located during this review, and an unlocated list is not the same as no list. Duitku must not be treated as the fallback that is automatically safe just because its risk is undocumented.
+
+**Therefore:** every retained candidate carries an unresolved eligibility question. No adapter code may be written against any provider until that provider has given a **written** position that specifically names the BOYFINITY product and business model. A verbal indication, a generic merchant approval, or an inference from a published list is not sufficient.
+
+**Disclosure duty, which is part of the requirement and not a nicety.** Both providers must receive the **same, honest, complete** product description. The application must not conceal, soften, or omit the intended use of the product in order to obtain approval. An approval obtained by misrepresentation is not an approval: it is a latent termination risk, it would invalidate every downstream planning assumption, and it would put settlement, refunds, and chargebacks at risk after launch. If the honest description is refused, that refusal is a valid and useful result — it removes a candidate before any code is written.
+
+#### 5.4.9 Provider selection procedure (owner decision, 2026-11-11)
+
+**Owner decision, recorded in effect:** the retained candidate set is **Midtrans and Duitku**. Xendit and Stripe are no longer candidates, for the reasons already documented in §5.4.4 and §5.4.11. The owner has **not registered with either provider**. The owner will submit **eligibility assessments to both providers in parallel**. The provider that first returns a **written approval that specifically covers the BOYFINITY Hub product and business model** becomes the primary choice.
+
+**Status after this decision:**
+
+| Item | Status |
+|---|---|
+| D3 | **UNAPPROVED** |
+| Midtrans | **Candidate — eligibility pending** |
+| Duitku | **Candidate — eligibility pending** |
+| Provider selection | **Pending written eligibility approval** |
+| Payment adapter | **BLOCKED** |
+| Phase 1 | **NOT STARTED** |
+
+**Selection rule, stated precisely.** The deciding event is a *written approval that specifically names the product and business model*. It is **not**:
+
+- the order in which a provider replies,
+- the speed of onboarding or sandbox access,
+- a generic "merchant approved" status that does not address the product category,
+- a verbal indication from a sales or support contact,
+- an inference from a published acceptable-use list.
+
+**The owner's instruction on this point is explicit: do not select a provider based on informal response order or onboarding speed.** A provider that answers first with a generic merchant approval has **not** satisfied the rule. A provider that answers first with a written, product-specific approval has.
+
+**No provider is the current default.** Both are candidates on equal footing until the written positions arrive. Any earlier framing in this section that treated Midtrans as "primary" and Duitku as "alternative" is **superseded** by this procedure; the technical findings behind that framing remain valid as a comparison, but they no longer imply an ordering.
+
+**Required verification checklist.** Before a provider selection is treated as final, all eight items must be recorded and verified for the winning candidate:
+
+| # | Item to verify | Why it must be in writing |
+|---|---|---|
+| 1 | Is the BOYFINITY product category accepted? | A generic merchant approval does not answer this |
+| 2 | Are the business model and the product distribution method permitted? | The model is paid subscriptions plus a free-key offer path, not a simple one-off sale |
+| 3 | Can an individual merchant register? | Both candidates document individual onboarding, but the accepted entity type must be confirmed for this application |
+| 4 | Which legal and tax documents are required? | Determines whether registration can complete at all; NPWP is required by both |
+| 5 | What is the **actual** rate for this product category? | Midtrans applies an unpublished schedule to "gaming and digital product" merchants |
+| 6 | Which payment channels are available? | Determines the effective fee mix and the checkout surface |
+| 7 | What are the refund, dispute, chargeback, and settlement policies? | `BACKEND.md` §7.5 defines a `refunded` status but no policy |
+| 8 | Is the approval written and citable? | It must be referenceable in this plan and in any later dispute |
+
+**Outcome handling, as directed by the owner:**
+
+- **If exactly one provider approves** with a written, product-specific approval, that provider becomes the primary choice. The other remains documented as the fallback. D3 still requires the owner's explicit approval before it is marked approved; a provider's approval is a necessary input, not the D3 approval itself.
+- **If both approve**, the owner chooses between them using the §5.4.4 cost comparison, the §5.4.5 webhook comparison, and item 5 of the checklist above.
+- **If one refuses**, the other remains a candidate. A refusal is not a D3 failure; it is the process working.
+- **If both refuse, or if neither gives a definite position, no payment adapter is built.** In that case Phase 6 does not proceed on payment integration, and the monetization model must be revisited with the owner before any further payment work. This is a hard stop, not a prompt to seek a third provider without the owner's direction.
+
+**Binding constraint:** this subsection is the gate. Until items 1 through 8 are recorded in writing for the selected provider, **the payment adapter stays BLOCKED** and D3 stays **UNAPPROVED**.
+
+#### 5.4.10 Unresolved questions requiring owner input
+
+Q12 and Q15 below are now partly answered by the decision in §5.4.9: the owner has committed to asking both providers. They remain open until the written answers arrive.
+
+| ID | Question | Why it blocks | Proposed default |
+|---|---|---|---|
+| Q12 | **Can this product be onboarded at all?** Does a paid game automation script fall under a prohibited category at Midtrans or Duitku? | If both refuse, no adapter is built and the monetization model needs owner reconsideration | Owner is obtaining written positions from both in parallel (§5.4.9). No provider has been cleared |
+| Q12a | If Duitku is selected, is the **Direct API** or the **SNAP API** the integration target? | Refund capability, callback IP allowlist, signature scheme, and the onboarding timeline all differ between them | SNAP adds an ASPI registration step of roughly 14 business days; Direct API is faster but has no refund endpoint |
+| Q13 | Is the merchant a registered business (PT/CV) or an individual? | Changes the required documents and the accepted entity type for this application | Assume individual: KTP + NPWP, matching bank account name |
+| Q14 | Does the owner hold an NPWP? | Both retained candidates require it in some form; Duitku offers student/spouse alternatives | Required for Midtrans and Duitku individual onboarding |
+| Q15 | What is the **actual** rate for a "gaming and digital product" merchant? | Midtrans applies a different, unpublished schedule; the real fee is unknown until a written quote is obtained | Obtain a written quote from the selected provider before Phase 6 estimates are treated as reliable |
+| Q16 | Manual per-period payment, or native recurring? | Decides whether a token vault and dunning flow exist at all | Manual, per §5.4.6 |
+| Q17 | What is the refund policy, and which provider can actually execute it? | `BACKEND.md` §7.5 defines the `refunded` status but no policy. Duitku's refund support is split by API surface and channel, so the answer changes the integration choice, not just the policy | Decide before launch; a written policy is required regardless of provider |
+| Q18 | Which channels must be enabled at launch? | Determines the effective fee mix and the checkout UI | QRIS plus one VA plus GoPay, if the provider allows selective activation |
+| Q19 | Which settlement destination bank account, and in whose name? | Payout fails if the account name does not match the merchant identity | Must match the merchant documents exactly |
+| Q20 | If **both** providers refuse or neither commits to a written position, what replaces the paid-subscription model? | §5.4.9 closes with a hard stop: no adapter is built and Phase 6 cannot proceed on payment | Owner decision required before any further payment work. Do not silently substitute a third provider |
+
+#### 5.4.11 Verification status and method
+
+**Verified from official documentation on 2026-11-11:** the Midtrans signature formula, retry matrix, IP allowlist, legal-document requirements, fee structure with VAT treatment, minimum and maximum transaction values, withdrawal timing, refund fee position, and the prohibited-category list; the Xendit minimum monthly fee **and both of its triggers (180-day dormancy and a monthly invoice below USD 50)**, refund and chargeback fees, retry schedule, `x-callback-token` and HMAC header documentation, Indonesia document requirement and the individual/XP restriction, settlement variability, and subscription prerequisites; the Duitku price list with its PPn-inclusive statement, withdrawal timing, **the Direct API absence of refunds, the SNAP Debit Payment Refund endpoint, the Direct Credit Card `void` and `refund` endpoints, the channel-specific refund guidance in the FAQ, the SNAP callback IP allowlist, and the SNAP registration and ASPI recommendation requirement**, callback signature formula and five-attempt resend behaviour, and its individual merchant document requirements including the NPWP position; and Stripe's Indonesia status as **Preview** with a contact-sales link rather than a registration link.
+
+**Corrected in this pass (2026-11-11):**
+
+- The earlier statement that "Duitku states it does not provide refunds" was **too broad**. It describes the Direct API and the general FAQ wording only. Duitku's SNAP API exposes a Debit Payment Refund endpoint, and Direct Credit Card exposes both `void` and `refund`. The refund table now distinguishes support **per API surface and per payment channel**, as it must.
+- The Xendit USD 50 fee was described as if charged to every account. It is **conditional**: it applies to a Dormant Account or to an account whose monthly invoice is below USD 50. The consequence for low volume is unchanged and argued separately, but the fee itself is no longer stated as unconditional.
+- The Duitku webhook row claimed no published IP allowlist. The **SNAP API publishes production and sandbox callback addresses**; the standard Direct API does not. The webhook table is now split by API product rather than generalised.
+- The claim that manual payment lowers refund exposure was **wrong and is removed**. Manual renewal avoids automatic recurring charges only. Refund, duplicate payment, chargeback, fraud, and consumer-protection duties remain.
+- The eligibility section previously implied a determination about the product. It now states explicitly that **no acceptance or rejection is concluded**, and that **both retained candidates carry the same unresolved question**.
+
+**Not verified, and not to be assumed:**
+
+- Whether the BOYFINITY product is eligible at **either** retained candidate. No written position has been requested or received.
+- Whether either provider will return a product-specific approval rather than a generic merchant approval, and on what timeline.
+- Any Midtrans rate for a "gaming and digital product" merchant. The different-rate statement is published; the number is not.
+- Xendit's per-channel fee percentages. The pricing page returned HTTP 403 to this review.
+- Duitku's prohibited-business or acceptable-use list. **No readable list was located; this is an absence of evidence, not evidence of absence.**
+- Whether SNAP refund is enabled for a given merchant, which channels the SNAP refund path covers, whether refunds carry a fee, and whether SNAP registration would be granted.
+- Whether Duitku disbursement is available to an individual (non-company) merchant. The FAQ states disbursement registration requires a **company-name** account.
+- Whether the SNAP published IP addresses also cover the standard Direct API callback. No equivalent list was found for the Direct API.
+- Any settlement, approval, or activation outcome. No account exists, no application was submitted, and no provider was contacted.
+- The IDR/USD exchange rate used to size the Xendit minimum fee. Only the USD 50 amount and its triggers are verified.
+
+**Owner decision recorded (2026-11-11):** Midtrans and Duitku are the retained candidates; Xendit and Stripe are dropped. The owner has not registered with either provider and will submit eligibility assessments to both in parallel. Selection is decided by the first **written, product-specific** approval, not by response order or onboarding speed. No adapter is built until the eight-item checklist in §5.4.9 is satisfied. This is a **process decision only** — it does not approve D3, does not approve a provider, and does not unblock the adapter.
+
+**Method note:** this was a documentation review. No merchant account was created, no sandbox was called, no transaction was attempted, and no webhook was delivered. Every effective-percentage figure in §5.4.4 is analyst arithmetic on published rates, and every risk statement in §5.4.7 and §5.4.8 is an analyst judgment, not a measured result.
 
 ---
 
@@ -1266,7 +1583,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **Integration tests:** None.
 
-**Acceptance criteria:** D1 is recorded as FINAL. D1a, D2, D3, D8, D10, and D11 are resolved. D5 and D18 have an owner and a deadline. No phase starts with a blocking decision unresolved.
+**Acceptance criteria:** D1 is recorded as FINAL. D2, D3, D8, D10, and D11 are resolved. D5 and D18 have an owner and a deadline. **D1a is closed for planning purposes by the owner's deferral** (2026-11-10, reaffirmed 2026-11-11): the decision itself is complete because the owner has resolved it as deferred, with the budget target and candidate record captured in Section 5.2.8. That closure satisfies the planning gate only. **Procurement remains blocked:** no account registration, VPS purchase, domain purchase, database subscription, or deployment may occur until D1a is affirmatively approved with a verified all-in cost inside the budget. No phase starts with a blocking decision unresolved.
 
 **Risks and blockers:** Decision paralysis. Reversing a vendor choice later is expensive. A payment provider may impose country or payout constraints that invalidate the preferred option. Hosting procurement is deferred, so deployment cannot start until D1a is decided. Helipod's advertised price and bonus terms are unverified and may not fit the IDR 100,000/month all-in budget once renewals, tax, IPv4, and database costs are known. A deployment that assumes Vercel Hobby would breach Vercel's commercial-use terms.
 
@@ -1284,23 +1601,28 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 - [x] D1a procurement block recorded: D1a does not block architecture, schema, or security work, but it blocks procurement, account registration, domain purchase, database subscription, deployment, and production launch.
 - [x] D1 portability under a VPS recorded: the architecture is standard Next.js on Node.js and is not tied to a specific platform; a VPS changes operational burden, not the approved design.
 - [ ] Helipod bonus terms, renewal pricing, IPv4, backup renewal, bandwidth policy, taxes, and managed PostgreSQL cost verified.
+- [x] D1a decision closed for **planning** by the owner's deferral (2026-11-10, reaffirmed 2026-11-11). This satisfies the Phase 0 decision gate; it does **not** approve a provider, a plan, a price, or a purchase.
 - [ ] D1a provider, plan, and verified all-in recurring cost fit within IDR 100,000/month.
 - [ ] D1a hosting tier and commercial terms approved by the owner after funds are available.
 - [ ] D1a purchase authorized by the owner.
 - [ ] D2 session ownership approved.
-- [ ] D3 payment provider approved.
+- [ ] **D3 payment provider approved — BLOCKED, not started.** No provider is selected. Midtrans and Duitku are both candidates pending written, product-specific eligibility approval (Section 5.4.9).
+- [ ] D3 eligibility assessments submitted to both retained providers, with the **same, honest, complete** product description, and the resulting written positions recorded.
+- [ ] D3 eight-item written checklist satisfied for the selected provider (product category, business model, individual merchant, legal/tax documents, actual rate, channels, refund/dispute/chargeback/settlement, citable written approval).
+- [ ] D3 owner inputs recorded from Section 5.4.10: Q12 and Q15 (pending the written provider answers), Q12a Direct vs SNAP API if Duitku is selected, Q13 entity type, Q14 NPWP, Q16 manual versus recurring, Q17 refund policy, Q18 launch channels, Q19 payout account, Q20 fallback if both providers refuse. **D3 remains UNAPPROVED until a written product-specific approval is received and the owner approves on that basis.**
 - [ ] D8 data access library approved.
 - [ ] D10 idempotency storage approved.
 - [ ] D11 rate-limit storage approved.
 - [ ] D5 and D18 have an owner and a deadline.
 - [ ] Documentation corrections approved and applied when protected files may be edited.
-- [ ] Owner inputs for D2 recorded: multi-device policy, access-token persistence policy, and OAuth scope decision.
+- [ ] Owner inputs for D2 recorded: Q1, Q2, Q11 unconditionally, plus Q7 if Option A is chosen or Q10 if Option B is chosen.
+- [ ] `oauth_states` conditional status recorded in the Phase 1 migration (required if D2 resolves to Option A, not created under Option B, not assumed before D2 is decided).
 
 ### 8.3 Phase 1 - Project foundation and database
 
 **Objective:** Produce a deployable skeleton with one API function under `/api` and the complete Section 8 schema.
 
-**Prerequisites:** Phase 0 and decisions D1a, D8, D10, D11. D1 is already approved.
+**Prerequisites:** Phase 0 and decisions D8, D10, D11. D1 is already approved. **D1a is not a prerequisite for this phase:** it is deferred, and Phase 1 may build and test locally or against a hosted Postgres. D1a blocks only deployment, hosting procurement, domain purchase, and production launch (Section 5.2.8).
 
 **Deliverables:**
 
@@ -1318,7 +1640,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **API endpoints:** `GET /api/health`. A placeholder `GET /api/config/public` may be added but must return only non-secret data.
 
-**Database changes:** All tables from Section 8: `users`, `user_roles`, `sessions`, `games`, `scripts`, `script_versions`, `script_access_logs`, `plans`, `keys`, `key_bans`, `key_ban_evidence`, `key_ban_reversals`, `key_reactivations`, `key_device_history`, `key_hwid_resets`, `key_sessions`, `system_settings`, `subscriptions`, `transactions`, `payment_events`, `offers`, `offer_completions`, `announcements`, `changelogs`, `audit_logs`. Planned support tables: `idempotency_keys`, `rate_limit_counters`, `jobs`, and an optional `oauth_states` table. All enums, CHECK constraints, foreign keys, partial unique indexes, and indexes are included.
+**Database changes:** All tables from Section 8: `users`, `user_roles`, `sessions`, `games`, `scripts`, `script_versions`, `script_access_logs`, `plans`, `keys`, `key_bans`, `key_ban_evidence`, `key_ban_reversals`, `key_reactivations`, `key_device_history`, `key_hwid_resets`, `key_sessions`, `system_settings`, `subscriptions`, `transactions`, `payment_events`, `offers`, `offer_completions`, `announcements`, `changelogs`, `audit_logs`. Planned support tables: `idempotency_keys`, `rate_limit_counters`, `jobs`, and `oauth_states`. **`oauth_states` is conditional, not optional.** It becomes required when D2 resolves to Option A (custom Discord OAuth), where it holds the single-use OAuth state and an optional `code_verifier` (Section 5.3.5). Under Option B it is not needed, because the auth library owns state storage. It must not be treated as mandatory before D2 is decided, and it must not be dropped as optional if Option A is approved. All enums, CHECK constraints, foreign keys, partial unique indexes, and indexes are included.
 
 **Security requirements:**
 
@@ -1341,7 +1663,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **Objective:** Establish immutable Discord identity, server-side sessions, and role-based authorization.
 
-**Prerequisites:** Phase 1 and decision D2. D2 was reviewed in Section 5.3 on 2026-11-11 and **remains unapproved**; Phase 2 may start only after the owner approves D2 and answers questions Q1, Q2, Q7, and Q11 in Section 5.3.7. The test list must treat the four controls in Section 5.3.2.4 separately, each with its own negative test.
+**Prerequisites:** Phase 1 and decision D2. D2 was reviewed in Section 5.3 on 2026-11-11 and **remains unapproved**; Phase 2 may start only after the owner approves D2. Phase 2 must answer the question set that D2 makes relevant: Q1 and Q2 unconditionally, Q11 to fix which controls are hard requirements, and **Q7** (PKCE, relevant if Option A is selected) and **Q10** (browser-side client, relevant only if Option B is selected) for whichever option is chosen. Under Option A, Q10 is not applicable and does not block Phase 2. The test list must treat the four controls in Section 5.3.2.4 separately, each with its own negative test.
 
 **Deliverables:**
 
@@ -1357,7 +1679,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **API endpoints:** `GET /api/auth/login`, `GET /api/auth/callback`, `GET /api/auth/session`, `POST /api/auth/logout`, `POST /api/auth/logout-all`.
 
-**Database changes:** `sessions`, `users`, `user_roles`; optional `oauth_states`; audit indexes. No new domain tables. Under the Section 5.3 recommendation, `sessions` gains `last_seen_at` and `rotated_at` (and optionally `absolute_expires_at`) in the Phase 1 migration, not as a later alteration.
+**Database changes:** `sessions`, `users`, `user_roles`; audit indexes. No new domain tables. **`oauth_states` is conditional, not optional:** it is required if and only if D2 resolves to Option A, and it is populated with `state_hash` and (if PKCE is adopted) `code_verifier` per Section 5.3.5. Under Option B the auth library owns state storage and the table is not created. Under the Section 5.3 recommendation, and only if Option A is approved, `sessions` gains `last_seen_at` and `rotated_at` (and optionally `absolute_expires_at`) in the Phase 1 migration, not as a later alteration.
 
 **Security requirements:**
 
@@ -1516,7 +1838,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **Objective:** Add paid plans, checkout, verified payment callbacks, subscription lifecycle, and transaction history.
 
-**Prerequisites:** Phase 4, decisions D3 and D9.
+**Prerequisites:** Phase 4 and decisions D3 and D9. **D3 is UNAPPROVED and the payment adapter is BLOCKED.** Section 5.4.9 records the owner's selection procedure: Midtrans and Duitku are both candidates pending written, product-specific eligibility approval, and no adapter code may be written until the eight-item checklist in that subsection is satisfied for the selected provider. A rejected onboarding after the adapter is built strands the work.
 
 **Deliverables:**
 
@@ -1552,7 +1874,7 @@ This is a planning re-sequencing, not a contradiction. The Section 14 list remai
 
 **Acceptance criteria:** A signed callback creates exactly one entitlement. A replay does nothing. An unsigned or malformed callback grants nothing. A subscription expiry is reflected in key validation.
 
-**Risks and blockers:** Provider fees, taxes, and payout eligibility. Webhook retries and ordering. Currency handling. Refund and dispute policy is not specified and needs an owner decision before launch.
+**Risks and blockers:** Provider fees, taxes, and payout eligibility. Section 5.4 documents that Midtrans applies an unpublished rate to "gaming and digital product" merchants, that Duitku's refund support differs between its Direct and SNAP APIs, and that **both retained candidates can refuse the product category**. **If both refuse, or if neither returns a definite written position, no payment adapter is built and this phase cannot proceed on payment integration** (Section 5.4.9, Q20). Webhook retries and ordering. Currency handling. Refund and dispute policy is not specified and needs an owner decision before launch (Section 5.4.10, Q17). Manual renewal avoids automatic recurring charges but does **not** remove refund, duplicate-payment, chargeback, fraud, or consumer-protection duties. No provider may be assumed approved until D3 is decided.
 
 ### 8.9 Phase 7 - Free-key offer verification
 
@@ -2203,7 +2525,7 @@ This checklist is not a claim that any item is complete.
 ### Decisions and scope
 
 - [x] D1 is recorded as FINAL — OWNER APPROVED (Model A).
-- [ ] D1a hosting tier is approved and the deployment plan permits commercial use.
+- [ ] D1a hosting tier is approved and the deployment plan permits commercial use. (D1a is currently **UNAPPROVED — DEFERRED**; deferred closure satisfies planning only and this procurement item stays open.)
 - [ ] D2 to D18 are recorded and approved before their owning phases.
 - [ ] No executor, anti-cheat, or unauthorized game integration is in scope.
 - [ ] Data retention and privacy approach is approved.
@@ -2274,9 +2596,9 @@ This checklist is not a claim that any item is complete.
 | ID | Question | Why it matters | Blocks | Recommended default |
 |---|---|---|---|---|
 | U1 | Model A or Model B? | Determines the entry point and whether a literal `api/index.js` exists | None | **Resolved: D1 FINAL - Model A.** No literal `api/index.js`. |
-| U1a | Which Vercel plan and commercial terms? | Hobby is non-commercial only; cron, duration, and logs differ by plan | Phase 1 deployment | Vercel Pro, one deploying seat. D1a requires owner approval |
-| U2 | Custom OAuth or Supabase Auth? | Changes session storage, revocation, and audit design | Phase 2 | **Reviewed 2026-11-11 - custom OAuth with a `sessions` table recommended, not approved.** Supabase Auth cannot meet the Section 9.11 immediate-revocation requirement without an added revocation store. See Section 5.3 |
-| U3 | Which payment provider? | Checkout, webhooks, fees, taxes, and payouts depend on it | Phase 6 | Stripe, pending owner approval |
+| U1a | Which hosting provider and plan, and on what commercial terms? | Hobby tiers are non-commercial only; cron, duration, and logs differ by plan. **D1a is UNAPPROVED — DEFERRED**, so no provider is selected. | Procurement, account registration, domain purchase, database subscription, deployment, and production launch. It does not block architecture, schema, or security work | **Deferred by owner (2026-11-10, reaffirmed 2026-11-11).** Budget target IDR 100,000/month all-in. Helipod VPS S Jakarta is an unapproved candidate; Vercel Pro is the retained research baseline. Owner approval required before any purchase |
+| U2 | Custom OAuth or Supabase Auth? | Changes session storage, revocation, and audit design | Phase 2 | **Reviewed 2026-11-11 - custom OAuth with a `sessions` table recommended, NOT approved.** Option A remains a recommendation only. D2 is unapproved; Phase 2 cannot start on it. See Section 5.3 |
+| U3 | Which payment provider? | Checkout, webhooks, fees, taxes, and payouts depend on it | Phase 6 | **Reviewed 2026-11-11 and updated by owner decision 2026-11-11, UNAPPROVED. Midtrans and Duitku are both candidates with eligibility pending; selection is pending a written, product-specific approval from one of them. The adapter is BLOCKED.** Stripe is unavailable to an Indonesian merchant; Xendit was dropped on its fee structure. See Section 5.4 |
 | U4 | Free-key eligibility rules? | Affects abuse controls and offer design | Phase 7 | Offer completion required, plus per-user cap and rate limit |
 | U5 | What is the HWID source and normalization? | The hash is meaningless without a stable input | Phase 4 | Per-platform trusted source, versioned canonical string |
 | U6 | What may a moderator do? | The permission matrix must match the routes | Phase 8 | No ban, reversal, reactivation, or evidence permissions |
@@ -2290,7 +2612,7 @@ This checklist is not a claim that any item is complete.
 | U14 | Should reversal request reads emit an audit event? | They carry no evidence, but are sensitive workflow reads | Phase 5 | No evidence event. Log access only if required by policy |
 | U15 | What are the Vercel scheduling limits? | The scheduler design depends on current platform terms | Phase 6 | Verified: legacy Cron on Hobby runs at most once per day and Pro once per minute; Schedules beta allows every 15 minutes on Hobby and every minute on Pro. D9 still needs approval. |
 | U16 | What are the exact provider callback formats? | Signature and timestamp handling depend on them | Phase 7 | Verify against live provider documentation and sandbox |
-| U17 | What are the refund, dispute, and tax rules? | Payment state and entitlement reversal are undefined | Phase 6 | Write a policy before launch |
+| U17 | What are the refund, dispute, and tax rules? | Payment state and entitlement reversal are undefined; refund capability differs per provider and, for Duitku, per API surface | Phase 6 | Write a policy before launch. See Section 5.4.10 (Q17) |
 | U18 | What happens to keys and bans on account deletion? | Legal retention and ownership conflict | Phase 10 | Keep audit and ban rows, anonymize display fields |
 | U19 | What is the backup RPO and RTO? | Backup frequency and restore testing depend on it | Phase 10 | Daily backup, restore within one business day |
 | U20 | What is the Roblox integration scope? | Credentials and per-place authorization must be explicit | Phase 4 | Only owned or authorized experiences, signed server requests |
