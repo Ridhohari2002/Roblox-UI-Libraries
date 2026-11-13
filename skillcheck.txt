@@ -1,0 +1,2301 @@
+Path: game:GetService("Workspace").Dooooohaaaaaaa["Skillcheck-gen"]
+
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local v1 = require(ReplicatedStorage.Modules.Audio.AudioBus)
+local Modules = ReplicatedStorage:WaitForChild("Modules")
+local Survivors = Modules:WaitForChild("Survivors")
+local KeybindsConfig = Survivors:WaitForChild("KeybindsConfig")
+local v2 = require(KeybindsConfig)
+local SkillCheckEvent = ReplicatedStorage.Remotes.Generator:WaitForChild("SkillCheckEvent")
+local SkillCheckResultEvent = ReplicatedStorage.Remotes.Generator:WaitForChild("SkillCheckResultEvent")
+local KingScourgeStart = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeStart")
+local KingScourgeHit = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeHit")
+local KingScourgeEnd = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeEnd")
+local LocalPlayer = game.Players.LocalPlayer
+local v3 = LocalPlayer:GetAttribute("clickhold") or false
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Frame = PlayerGui:WaitForChild("ProgressPromptGui"):WaitForChild("Frame")
+local CollectionService = game:GetService("CollectionService")
+local UserInputService = game:GetService("UserInputService")
+local SkillCheckPromptGui = PlayerGui:WaitForChild("SkillCheckPromptGui")
+PlayerGui = SkillCheckPromptGui:WaitForChild("Check")
+local Line = PlayerGui:WaitForChild("Line")
+local Goal = PlayerGui:WaitForChild("Goal")
+local RunService = game:GetService("RunService")
+local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts")
+local PlayerModule = PlayerScripts:WaitForChild("PlayerModule")
+local v4 = require(PlayerModule):GetControls()
+local v5 = nil
+local Parent = script.Parent
+local v6 = false
+local v7 = nil
+local v8 = nil
+local v9 = nil
+local v10 = false
+local v11 = false
+local v12 = nil
+local v13 = false
+local v14 = 0
+local v15 = 0
+local v16 = nil
+local v17 = nil
+local Sound = script:WaitForChild("Sound")
+task.spawn(function() --[[ Upvalues: Sound (copy), SkillCheckPromptGui (copy) ]]
+    pcall(function() --[[ Upvalues: Sound (upvalue), SkillCheckPromptGui (upvalue) ]]
+        local ContentProvider = game:GetService("ContentProvider")
+        local v18 = {Sound, SkillCheckPromptGui}
+        ContentProvider:PreloadAsync(v18)
+    end)
+end)
+
+local function playPrepareSound() --[[ Upvalues: Sound (copy), v1 (copy) ]]
+    if Sound.IsReady then
+        Sound.TimePosition = 0
+        v1.restart(Sound)
+        return
+    end
+
+    task.spawn(function() --[[ Upvalues: Sound (upvalue), v1 (upvalue) ]]
+        local v19 = os.clock()
+        while not Sound.IsReady do
+            local v20 = os.clock() - v19
+            if v20 >= 5 then
+                break
+            end
+
+            task.wait(0.05)
+        end
+
+        if Sound.IsReady then
+            Sound.TimePosition = 0
+            v1.restart(Sound)
+        end
+
+    end)
+end
+
+local Confirm = script:WaitForChild("Confirm")
+local Great = script:WaitForChild("Great")
+
+local function getOppositeScourgeGoal(a0)
+    return a0 + math.random(135, 225) - 130.5
+end
+
+local v21 = nil
+local v22 = nil
+local v23 = nil
+local v24 = nil
+
+local function stopMovementCheck() --[[ Upvalues: v21 (ref) ]]
+    if v21 then
+        v21:Disconnect()
+        v21 = nil
+    end
+end
+
+local function stopHpCheck() --[[ Upvalues: v22 (ref) ]]
+    if v22 then
+        v22:Disconnect()
+        v22 = nil
+    end
+end
+
+local function stopActionTagCheck() --[[ Upvalues: v23 (ref) ]]
+    if v23 then
+        v23:Disconnect()
+        v23 = nil
+    end
+end
+
+local function stopRepairingCheck() --[[ Upvalues: v24 (ref) ]]
+    if v24 then
+        v24:Disconnect()
+        v24 = nil
+    end
+end
+
+local function cleanupSkillCheck() --[[ Upvalues: v21 (ref), v22 (ref), v23 (ref), v24 (ref) ]]
+    if v21 then
+        v21:Disconnect()
+        v21 = nil
+    end
+
+    if v22 then
+        v22:Disconnect()
+        v22 = nil
+    end
+
+    if v23 then
+        v23:Disconnect()
+        v23 = nil
+    end
+
+    if v24 then
+        v24:Disconnect()
+        v24 = nil
+    end
+end
+
+local function handleSkillCheck(a0) --[[ Upvalues: v6 (ref), v10 (ref), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v5 (ref), Parent (copy), v21 (ref), v22 (ref), v23 (ref), v24 (ref), Frame (copy), LocalPlayer (copy), v1 (copy), Great (copy), Confirm (copy), CollectionService (copy) ]]
+    if not v6 or v10 then
+        return
+    end
+
+    v10 = true
+    if v7 then
+        v7:Cancel()
+        v7 = nil
+    end
+
+    if a0 == "neutral" then
+        v6 = false
+        PlayerGui.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+        SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+        if v21 then
+            v21:Disconnect()
+            v21 = nil
+        end
+
+        if v22 then
+            v22:Disconnect()
+            v22 = nil
+        end
+
+        if v23 then
+            v23:Disconnect()
+            v23 = nil
+        end
+
+        if v24 then
+            v24:Disconnect()
+            v24 = nil
+        end
+
+        return
+    end
+
+    local v25 = v5
+    task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v25 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+        if v5 ~= v25 then
+            return
+        end
+
+        v6 = false
+        PlayerGui.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+    end)
+    if a0 == "fail" then
+        Frame.Visible = false
+        SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+        LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+    else
+        local Rotation = Line.Rotation
+        local v26 = 102 + Goal.Rotation
+        local v27 = 116 + Goal.Rotation
+        local v28 = 159 + Goal.Rotation
+        if v26 <= Rotation and Rotation <= v27 then
+            SkillCheckResultEvent:FireServer("success", 1, v8, v9, v5, Parent)
+            v1.restart(Great)
+        else
+            if v27 < Rotation and Rotation <= v28 then
+                SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                v1.restart(Confirm)
+            else
+                Frame.Visible = false
+                SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                CollectionService:RemoveTag(v9, "GeneratorPoint")
+                LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+            end
+        end
+    end
+
+    if v21 then
+        v21:Disconnect()
+        v21 = nil
+    end
+
+    if v22 then
+        v22:Disconnect()
+        v22 = nil
+    end
+
+    if v23 then
+        v23:Disconnect()
+        v23 = nil
+    end
+
+    if v24 then
+        v24:Disconnect()
+        v24 = nil
+    end
+end
+
+local function endScourgeMode(a0) --[[ Upvalues: v13 (ref), v6 (ref), v10 (ref), LocalPlayer (copy), CollectionService (copy), v17 (ref), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), v21 (ref), v22 (ref), v23 (ref), v24 (ref) ]]
+    if not v13 then
+        return
+    end
+
+    v13 = false
+    v6 = false
+    v10 = true
+    if a0 then
+        local v29 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("CheckInterractable")
+        if v29 then
+            v29:SetAttribute("isRepairing", false)
+        end
+
+        local Character1 = LocalPlayer.Character
+        if Character1 then
+            local HumanoidRootPart1 = Character1:FindFirstChild("HumanoidRootPart")
+            if HumanoidRootPart1 then
+                CollectionService:RemoveTag(HumanoidRootPart1, "doing action")
+                HumanoidRootPart1.Anchored = false
+            end
+        end
+    end
+
+    if v17 then
+        v17:Cancel()
+        v17 = nil
+    end
+
+    if v7 then
+        v7:Cancel()
+        v7 = nil
+    end
+
+    PlayerGui.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    if v21 then
+        v21:Disconnect()
+        v21 = nil
+    end
+
+    if v22 then
+        v22:Disconnect()
+        v22 = nil
+    end
+
+    if v23 then
+        v23:Disconnect()
+        v23 = nil
+    end
+
+    if v24 then
+        v24:Disconnect()
+        v24 = nil
+    end
+end
+
+local function startMovementCheck() --[[ Upvalues: v3 (copy), v21 (ref), RunService (copy), v6 (ref), v10 (ref), v4 (copy), v13 (ref), KingScourgeHit (copy), v16 (ref), v12 (ref), Parent (copy), endScourgeMode (copy), v11 (ref), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v5 (ref), v22 (ref), v23 (ref), v24 (ref), Frame (copy), LocalPlayer (copy) ]]
+    if not v3 then
+        return
+    end
+
+    if v21 then
+        return
+    end
+
+    v21 = RunService.Heartbeat:Connect(function() --[[ Upvalues: v3 (upvalue), v21 (upvalue), v6 (upvalue), v10 (upvalue), v4 (upvalue), v13 (upvalue), KingScourgeHit (upvalue), v16 (upvalue), v12 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v11 (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v5 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue), Frame (upvalue), LocalPlayer (upvalue) ]]
+        if not v3 then
+            if v21 then
+                v21:Disconnect()
+                v21 = nil
+            end
+
+            return
+        end
+
+        if v3 then
+            if v6 then
+                if not v10 then
+                    local v30 = v4:GetMoveVector()
+                    if v30.X ~= 0 or v30.Y ~= 0 then
+                        if v13 then
+                            local v31 = v4:GetMoveVector()
+                            if v31.X ~= 0 or v31.Y ~= 0 then
+                                KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+                                endScourgeMode()
+                            end
+
+                            return
+                        end
+
+                        if not v11 then
+                            if v6 then
+                                if v10 then
+                                    -- jump to 230 (out of range)
+                                end
+
+                                v10 = true
+                                if v7 then
+                                    v7:Cancel()
+                                    v7 = nil
+                                end
+
+                                v6 = false
+                                PlayerGui.Visible = false
+                                Line.Rotation = 0
+                                Goal.Rotation = 0
+                                SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                                if v21 then
+                                    v21:Disconnect()
+                                    v21 = nil
+                                end
+
+                                if v22 then
+                                    v22:Disconnect()
+                                    v22 = nil
+                                end
+
+                                if v23 then
+                                    v23:Disconnect()
+                                    v23 = nil
+                                end
+
+                                if v24 then
+                                    v24:Disconnect()
+                                    v24 = nil
+                                    -- branch continues at 230
+                                end
+
+                                -- branch continues at 230
+                            end
+                        else
+                            if v6 then
+                                if v10 then
+                                else
+                                    v10 = true
+                                    if v7 then
+                                        v7:Cancel()
+                                        v7 = nil
+                                    end
+
+                                    local v32 = v5
+                                    task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v32 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                                        if v5 ~= v32 then
+                                            return
+                                        end
+
+                                        v6 = false
+                                        PlayerGui.Visible = false
+                                        Line.Rotation = 0
+                                        Goal.Rotation = 0
+                                    end)
+                                    Frame.Visible = false
+                                    SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                                    LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+                                    if v21 then
+                                        v21:Disconnect()
+                                        v21 = nil
+                                    end
+
+                                    if v22 then
+                                        v22:Disconnect()
+                                        v22 = nil
+                                    end
+
+                                    if v23 then
+                                        v23:Disconnect()
+                                        v23 = nil
+                                    end
+
+                                    if v24 then
+                                        v24:Disconnect()
+                                        v24 = nil
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if not v6 and v21 then
+            v21:Disconnect()
+            v21 = nil
+        end
+
+    end)
+end
+
+local function startHpCheck() --[[ Upvalues: v22 (ref), LocalPlayer (copy), v6 (ref), v10 (ref), v13 (ref), KingScourgeHit (copy), v16 (ref), v12 (ref), Parent (copy), endScourgeMode (copy), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v5 (ref), v21 (ref), v23 (ref), v24 (ref) ]]
+    if v22 then
+        return
+    end
+
+    local v33 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not v33 then
+        return
+    end
+
+    local v34 = v33:GetPropertyChangedSignal("Health")
+    local Health = v33.Health
+    v22 = v34:Connect(function() --[[ Upvalues: v6 (upvalue), v10 (upvalue), v33 (copy), v13 (upvalue), Health (ref), KingScourgeHit (upvalue), v16 (upvalue), v12 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v5 (upvalue), v21 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue) ]]
+        if v6 then
+            if not v10 then
+                local Health1 = v33.Health
+                if v13 then
+                    if v33.Health < Health then
+                        KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+                        endScourgeMode()
+                    end
+
+                    Health = v33.Health
+                    return
+                end
+
+                if Health1 < Health then
+                    if v6 then
+                        if v10 then
+                        else
+                            v10 = true
+                            if v7 then
+                                v7:Cancel()
+                                v7 = nil
+                            end
+
+                            v6 = false
+                            PlayerGui.Visible = false
+                            Line.Rotation = 0
+                            Goal.Rotation = 0
+                            SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                            if v21 then
+                                v21:Disconnect()
+                                v21 = nil
+                            end
+
+                            if v22 then
+                                v22:Disconnect()
+                                v22 = nil
+                            end
+
+                            if v23 then
+                                v23:Disconnect()
+                                v23 = nil
+                            end
+
+                            if v24 then
+                                v24:Disconnect()
+                                v24 = nil
+                            end
+                        end
+                    end
+                end
+
+                Health = Health1
+            end
+        end
+
+    end)
+end
+
+local function startActionTagCheck() --[[ Upvalues: v23 (ref), LocalPlayer (copy), v6 (ref), v10 (ref), v13 (ref), KingScourgeHit (copy), v16 (ref), v12 (ref), Parent (copy), endScourgeMode (copy), v7 (ref), v5 (ref), PlayerGui (copy), Line (copy), Goal (copy), Frame (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v21 (ref), v22 (ref), v24 (ref) ]]
+    if v23 then
+        return
+    end
+
+    local Character3 = LocalPlayer.Character
+    if not Character3 then
+        return
+    end
+
+    if Character3:GetAttribute("Locked") then
+        if v6 then
+            if not v10 then
+                if v13 then
+                    KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+                    endScourgeMode(true)
+                    return
+                end
+
+                if v6 then
+                    if v10 then
+                        return
+                    end
+
+                    v10 = true
+                    if v7 then
+                        v7:Cancel()
+                        v7 = nil
+                    end
+
+                    local v35 = v5
+                    task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v35 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                        if v5 ~= v35 then
+                            return
+                        end
+
+                        v6 = false
+                        PlayerGui.Visible = false
+                        Line.Rotation = 0
+                        Goal.Rotation = 0
+                    end)
+                    Frame.Visible = false
+                    SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                    LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+                    if v21 then
+                        v21:Disconnect()
+                        v21 = nil
+                    end
+
+                    if v22 then
+                        v22:Disconnect()
+                        v22 = nil
+                    end
+
+                    if v23 then
+                        v23:Disconnect()
+                        v23 = nil
+                    end
+
+                    if v24 then
+                        v24:Disconnect()
+                        v24 = nil
+                    end
+                end
+            end
+        end
+
+        return
+    end
+
+    local v36 = Character3:GetAttributeChangedSignal("Locked")
+    v23 = v36:Connect(function() --[[ Upvalues: Character3 (copy), v6 (upvalue), v10 (upvalue), v13 (upvalue), KingScourgeHit (upvalue), v16 (upvalue), v12 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v7 (upvalue), v5 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), Frame (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), LocalPlayer (upvalue), v21 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue) ]]
+        if not Character3:GetAttribute("Locked") then
+            return
+        end
+
+        if not v6 or v10 then
+            return
+        end
+
+        if v13 then
+            KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+            endScourgeMode(true)
+            return
+        end
+
+        if v6 then
+            if v10 then
+                return
+            end
+
+            v10 = true
+            if v7 then
+                v7:Cancel()
+                v7 = nil
+            end
+
+            local v37 = v5
+            task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v37 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                if v5 ~= v37 then
+                    return
+                end
+
+                v6 = false
+                PlayerGui.Visible = false
+                Line.Rotation = 0
+                Goal.Rotation = 0
+            end)
+            Frame.Visible = false
+            SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+            LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+            if v21 then
+                v21:Disconnect()
+                v21 = nil
+            end
+
+            if v22 then
+                v22:Disconnect()
+                v22 = nil
+            end
+
+            if v23 then
+                v23:Disconnect()
+                v23 = nil
+            end
+
+            if v24 then
+                v24:Disconnect()
+                v24 = nil
+            end
+        end
+
+    end)
+end
+
+local function startRepairingCheck() --[[ Upvalues: v24 (ref), LocalPlayer (copy), v13 (ref), v6 (ref), v10 (ref), v11 (ref), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v5 (ref), Parent (copy), v21 (ref), v22 (ref), v23 (ref), Frame (copy) ]]
+    if v24 then
+        return
+    end
+
+    local v38 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("CheckInterractable")
+    if not v38 then
+        return
+    end
+
+    local v39 = v38:GetAttributeChangedSignal("isRepairing")
+    v24 = v39:Connect(function() --[[ Upvalues: v38 (copy), v13 (upvalue), v6 (upvalue), v10 (upvalue), v11 (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v5 (upvalue), Parent (upvalue), v21 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue), Frame (upvalue), LocalPlayer (upvalue) ]]
+        if v38:GetAttribute("isRepairing") then
+            return
+        end
+
+        if v13 then
+            return
+        end
+
+        if not v6 or v10 then
+            return
+        end
+
+        if not v11 then
+            if v6 then
+                if v10 then
+                    return
+                end
+
+                v10 = true
+                if v7 then
+                    v7:Cancel()
+                    v7 = nil
+                end
+
+                v6 = false
+                PlayerGui.Visible = false
+                Line.Rotation = 0
+                Goal.Rotation = 0
+                SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                if v21 then
+                    v21:Disconnect()
+                    v21 = nil
+                end
+
+                if v22 then
+                    v22:Disconnect()
+                    v22 = nil
+                end
+
+                if v23 then
+                    v23:Disconnect()
+                    v23 = nil
+                end
+
+                if v24 then
+                    v24:Disconnect()
+                    v24 = nil
+                    return
+                    -- branch continues at 187
+                end
+
+                -- branch continues at 187
+            end
+        end
+
+        if v6 then
+            if v10 then
+                return
+            end
+
+            v10 = true
+            if v7 then
+                v7:Cancel()
+                v7 = nil
+            end
+
+            local v40 = v5
+            task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v40 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                if v5 ~= v40 then
+                    return
+                end
+
+                v6 = false
+                PlayerGui.Visible = false
+                Line.Rotation = 0
+                Goal.Rotation = 0
+            end)
+            Frame.Visible = false
+            SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+            LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+            if v21 then
+                v21:Disconnect()
+                v21 = nil
+            end
+
+            if v22 then
+                v22:Disconnect()
+                v22 = nil
+            end
+
+            if v23 then
+                v23:Disconnect()
+                v23 = nil
+            end
+
+            if v24 then
+                v24:Disconnect()
+                v24 = nil
+            end
+        end
+
+    end)
+end
+
+local function tweenLineRotation() --[[ Upvalues: v10 (ref), LocalPlayer (copy), v7 (ref), TweenService (copy), Line (copy), v5 (ref), v6 (ref), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), Parent (copy), PlayerGui (copy), Goal (copy), v21 (ref), v22 (ref), v23 (ref), v24 (ref) ]]
+    v10 = false
+    local v43 = LocalPlayer.Character and LocalPlayer.Character:GetAttribute("skillcheckspeed") or 1
+    local v44 = 1.3 * v43
+    local v45 = math.max(v44, 0.4)
+    local v46 = TweenInfo.new(v45, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    v7 = TweenService:Create(Line, v46, {Rotation = 360})
+    local v47 = v7
+    local v48 = v5
+    v7.Completed:Connect(function(a0) --[[ Upvalues: v7 (upvalue), v47 (copy), v5 (upvalue), v48 (copy), v6 (upvalue), v10 (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), Parent (upvalue), LocalPlayer (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), v21 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue) ]]
+        if a0 ~= Enum.PlaybackState.Completed or v7 ~= v47 or v5 ~= v48 then
+            return
+        end
+
+        if v6 and not v10 then
+            SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+            LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+            v6 = false
+            PlayerGui.Visible = false
+            Line.Rotation = 0
+            Goal.Rotation = 0
+            if v21 then
+                v21:Disconnect()
+                v21 = nil
+            end
+
+            if v22 then
+                v22:Disconnect()
+                v22 = nil
+            end
+
+            if v23 then
+                v23:Disconnect()
+                v23 = nil
+            end
+
+            if v24 then
+                v24:Disconnect()
+                v24 = nil
+            end
+        end
+
+    end)
+    v7:Play()
+end
+
+local function startScourgeSpin() --[[ Upvalues: v13 (ref), LocalPlayer (copy), v15 (ref), v14 (ref), Line (copy), v17 (ref), TweenService (copy), v12 (ref), KingScourgeHit (copy), v16 (ref), Parent (copy), endScourgeMode (copy) ]]
+    if not v13 then
+        return
+    end
+
+    local v51 = LocalPlayer.Character and LocalPlayer.Character:GetAttribute("skillcheckspeed") or 1
+    local v52 = v15 - v14 + 1
+    local v53
+    if v52 == 1 then
+        v53 = 1.4
+    else
+        if v52 == 2 then
+            v53 = 1.2
+        else
+            v53 = 1
+        end
+    end
+
+    local v54 = 1.3 * v51 * v53
+    v52 = math.max(v54, 0.4)
+    local v55 = TweenInfo.new(v52, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    local v56 = {Rotation = Line.Rotation + 360}
+    v17 = TweenService:Create(Line, v55, v56)
+    local v57 = v12
+    local v58 = v17
+    v17.Completed:Connect(function(a0) --[[ Upvalues: v12 (upvalue), v57 (copy), v17 (upvalue), v58 (copy), v13 (upvalue), KingScourgeHit (upvalue), v16 (upvalue), Parent (upvalue), endScourgeMode (upvalue) ]]
+        if v12 ~= v57 or v17 ~= v58 then
+            return
+        end
+
+        if a0 ~= Enum.PlaybackState.Completed then
+            return
+        end
+
+        if not v13 then
+            return
+        end
+
+        KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+        endScourgeMode()
+    end)
+    v17:Play()
+end
+
+local v59 = nil
+KingScourgeStart.OnClientEvent:Connect(function(a0, a1, a2, a3, a4, a5) --[[ Upvalues: Parent (copy), LocalPlayer (copy), v13 (ref), v12 (ref), endScourgeMode (copy), v14 (ref), v15 (ref), v59 (ref), v16 (ref), v8 (ref), v9 (ref), v6 (ref), v10 (ref), v11 (ref), PlayerGui (copy), Line (copy), Goal (copy), v1 (copy), Sound (copy), v3 (copy), v21 (ref), RunService (copy), v4 (copy), KingScourgeHit (copy), v7 (ref), SkillCheckResultEvent (copy), v5 (ref), v22 (ref), v23 (ref), v24 (ref), Frame (copy), startHpCheck (copy), startActionTagCheck (copy), startScourgeSpin (copy) ]]
+    if a4 ~= Parent then
+        return
+    end
+
+    if LocalPlayer.Character ~= Parent then
+        return
+    end
+
+    local CheckInterractable2 = Parent:FindFirstChild("CheckInterractable")
+    if a5 then
+        if not CheckInterractable2 or CheckInterractable2:GetAttribute("RepairRequestId") ~= a5 then
+            return
+        end
+    end
+
+    if v13 and v12 ~= a3 then
+        endScourgeMode()
+    end
+
+    v12 = a3
+    if v13 then
+        return
+    end
+
+    local v60 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("CheckInterractable")
+    if not (v60 and v60:GetAttribute("isRepairing")) then
+        return
+    end
+
+    v13 = true
+    v14 = a2 or 1
+    v15 = a2 or 1
+    v59 = a0
+    v16 = a1
+    v8 = a0
+    v9 = a1
+    v6 = true
+    v10 = false
+    v11 = false
+    PlayerGui.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    v1.restart(Sound)
+    if not v3 then
+    else
+        if v21 then
+        else
+            v21 = RunService.Heartbeat:Connect(function() --[[ Upvalues: v3 (upvalue), v21 (upvalue), v6 (upvalue), v10 (upvalue), v4 (upvalue), v13 (upvalue), KingScourgeHit (upvalue), v16 (upvalue), v12 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v11 (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v5 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue), Frame (upvalue), LocalPlayer (upvalue) ]]
+                if not v3 then
+                    if v21 then
+                        v21:Disconnect()
+                        v21 = nil
+                    end
+
+                    return
+                end
+
+                if v3 then
+                    if v6 then
+                        if not v10 then
+                            local v61 = v4:GetMoveVector()
+                            if v61.X ~= 0 or v61.Y ~= 0 then
+                                if v13 then
+                                    local v62 = v4:GetMoveVector()
+                                    if v62.X ~= 0 or v62.Y ~= 0 then
+                                        KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+                                        endScourgeMode()
+                                    end
+
+                                    return
+                                end
+
+                                if not v11 then
+                                    if v6 then
+                                        if v10 then
+                                            -- jump to 230 (out of range)
+                                        end
+
+                                        v10 = true
+                                        if v7 then
+                                            v7:Cancel()
+                                            v7 = nil
+                                        end
+
+                                        v6 = false
+                                        PlayerGui.Visible = false
+                                        Line.Rotation = 0
+                                        Goal.Rotation = 0
+                                        SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                                        if v21 then
+                                            v21:Disconnect()
+                                            v21 = nil
+                                        end
+
+                                        if v22 then
+                                            v22:Disconnect()
+                                            v22 = nil
+                                        end
+
+                                        if v23 then
+                                            v23:Disconnect()
+                                            v23 = nil
+                                        end
+
+                                        if v24 then
+                                            v24:Disconnect()
+                                            v24 = nil
+                                            -- branch continues at 230
+                                        end
+
+                                        -- branch continues at 230
+                                    end
+                                else
+                                    if v6 then
+                                        if v10 then
+                                        else
+                                            v10 = true
+                                            if v7 then
+                                                v7:Cancel()
+                                                v7 = nil
+                                            end
+
+                                            local v63 = v5
+                                            task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v63 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                                                if v5 ~= v63 then
+                                                    return
+                                                end
+
+                                                v6 = false
+                                                PlayerGui.Visible = false
+                                                Line.Rotation = 0
+                                                Goal.Rotation = 0
+                                            end)
+                                            Frame.Visible = false
+                                            SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                                            LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+                                            if v21 then
+                                                v21:Disconnect()
+                                                v21 = nil
+                                            end
+
+                                            if v22 then
+                                                v22:Disconnect()
+                                                v22 = nil
+                                            end
+
+                                            if v23 then
+                                                v23:Disconnect()
+                                                v23 = nil
+                                            end
+
+                                            if v24 then
+                                                v24:Disconnect()
+                                                v24 = nil
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if not v6 and v21 then
+                    v21:Disconnect()
+                    v21 = nil
+                end
+
+            end)
+        end
+    end
+
+    startHpCheck()
+    startActionTagCheck()
+    local v64 = v12
+    task.delay(0.5, function() --[[ Upvalues: v12 (upvalue), v64 (copy), v6 (upvalue), v13 (upvalue), LocalPlayer (upvalue), KingScourgeHit (upvalue), v16 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v11 (upvalue), PlayerGui (upvalue), Goal (upvalue), startScourgeSpin (upvalue) ]]
+        if v12 ~= v64 then
+            return
+        end
+
+        if not (v6 and v13) then
+            return
+        end
+
+        local v65 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("CheckInterractable")
+        if not (v65 and v65:GetAttribute("isRepairing")) then
+            KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+            endScourgeMode()
+            return
+        end
+
+        v11 = true
+        PlayerGui.Visible = true
+        Goal.Rotation = math.random(0, 200)
+        startScourgeSpin()
+    end)
+    local v66 = (v15 or 1) * 8 + 20
+    local v67 = v16
+    local v68 = v12
+    task.delay(v66, function() --[[ Upvalues: v13 (upvalue), v16 (upvalue), v67 (copy), v12 (upvalue), v68 (copy), endScourgeMode (upvalue) ]]
+        if v13 and v16 == v67 and v12 == v68 then
+            endScourgeMode()
+        end
+
+    end)
+end)
+KingScourgeEnd.OnClientEvent:Connect(function(a0, a1, a2) --[[ Upvalues: v12 (ref), Parent (copy), v16 (ref), endScourgeMode (copy) ]]
+    if a1 ~= v12 or a2 ~= Parent then
+        return
+    end
+
+    if v16 == a0 then
+        endScourgeMode()
+    end
+
+end)
+local Character7 = LocalPlayer.Character
+SkillCheckEvent.OnClientEvent:Connect(function(a0, a1, a2, a3, a4) --[[ Upvalues: Parent (copy), LocalPlayer (copy), v5 (ref), v7 (ref), Character7 (copy), v9 (ref), v8 (ref), v6 (ref), v10 (ref), v11 (ref), PlayerGui (copy), Line (copy), Goal (copy), v1 (copy), Sound (copy), v3 (copy), v21 (ref), RunService (copy), v4 (copy), v13 (ref), KingScourgeHit (copy), v16 (ref), v12 (ref), endScourgeMode (copy), SkillCheckResultEvent (copy), v22 (ref), v23 (ref), v24 (ref), Frame (copy), startHpCheck (copy), startActionTagCheck (copy), startRepairingCheck (copy), tweenLineRotation (copy) ]]
+    if a3 ~= Parent then
+        return
+    end
+
+    if LocalPlayer.Character ~= Parent then
+        return
+    end
+
+    local CheckInterractable5 = Parent:FindFirstChild("CheckInterractable")
+    if a4 then
+        if not CheckInterractable5 or CheckInterractable5:GetAttribute("RepairRequestId") ~= a4 then
+            return
+        end
+    end
+
+    v5 = a2
+    if v7 then
+        v7:Cancel()
+        v7 = nil
+    end
+
+    if not Character7:FindFirstChild("CheckInterractable"):GetAttribute("isRepairing") then
+        return
+    end
+
+    v9 = a1
+    v8 = a0
+    v6 = true
+    v10 = false
+    v11 = false
+    PlayerGui.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    v1.restart(Sound)
+    if not v3 then
+    else
+        if v21 then
+        else
+            v21 = RunService.Heartbeat:Connect(function() --[[ Upvalues: v3 (upvalue), v21 (upvalue), v6 (upvalue), v10 (upvalue), v4 (upvalue), v13 (upvalue), KingScourgeHit (upvalue), v16 (upvalue), v12 (upvalue), Parent (upvalue), endScourgeMode (upvalue), v11 (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v5 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue), Frame (upvalue), LocalPlayer (upvalue) ]]
+                if not v3 then
+                    if v21 then
+                        v21:Disconnect()
+                        v21 = nil
+                    end
+
+                    return
+                end
+
+                if v3 then
+                    if v6 then
+                        if not v10 then
+                            local v69 = v4:GetMoveVector()
+                            if v69.X ~= 0 or v69.Y ~= 0 then
+                                if v13 then
+                                    local v70 = v4:GetMoveVector()
+                                    if v70.X ~= 0 or v70.Y ~= 0 then
+                                        KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+                                        endScourgeMode()
+                                    end
+
+                                    return
+                                end
+
+                                if not v11 then
+                                    if v6 then
+                                        if v10 then
+                                            -- jump to 230 (out of range)
+                                        end
+
+                                        v10 = true
+                                        if v7 then
+                                            v7:Cancel()
+                                            v7 = nil
+                                        end
+
+                                        v6 = false
+                                        PlayerGui.Visible = false
+                                        Line.Rotation = 0
+                                        Goal.Rotation = 0
+                                        SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                                        if v21 then
+                                            v21:Disconnect()
+                                            v21 = nil
+                                        end
+
+                                        if v22 then
+                                            v22:Disconnect()
+                                            v22 = nil
+                                        end
+
+                                        if v23 then
+                                            v23:Disconnect()
+                                            v23 = nil
+                                        end
+
+                                        if v24 then
+                                            v24:Disconnect()
+                                            v24 = nil
+                                            -- branch continues at 230
+                                        end
+
+                                        -- branch continues at 230
+                                    end
+                                else
+                                    if v6 then
+                                        if v10 then
+                                        else
+                                            v10 = true
+                                            if v7 then
+                                                v7:Cancel()
+                                                v7 = nil
+                                            end
+
+                                            local v71 = v5
+                                            task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v71 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                                                if v5 ~= v71 then
+                                                    return
+                                                end
+
+                                                v6 = false
+                                                PlayerGui.Visible = false
+                                                Line.Rotation = 0
+                                                Goal.Rotation = 0
+                                            end)
+                                            Frame.Visible = false
+                                            SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                                            LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+                                            if v21 then
+                                                v21:Disconnect()
+                                                v21 = nil
+                                            end
+
+                                            if v22 then
+                                                v22:Disconnect()
+                                                v22 = nil
+                                            end
+
+                                            if v23 then
+                                                v23:Disconnect()
+                                                v23 = nil
+                                            end
+
+                                            if v24 then
+                                                v24:Disconnect()
+                                                v24 = nil
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if not v6 and v21 then
+                    v21:Disconnect()
+                    v21 = nil
+                end
+
+            end)
+        end
+    end
+
+    startHpCheck()
+    startActionTagCheck()
+    startRepairingCheck()
+    local v72 = v5
+    task.delay(0.5, function() --[[ Upvalues: v5 (upvalue), v72 (copy), LocalPlayer (upvalue), Parent (upvalue), v6 (upvalue), v10 (upvalue), v7 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue), SkillCheckResultEvent (upvalue), v8 (upvalue), v9 (upvalue), v21 (upvalue), v22 (upvalue), v23 (upvalue), v24 (upvalue), v11 (upvalue), tweenLineRotation (upvalue) ]]
+        if v5 ~= v72 or LocalPlayer.Character ~= Parent then
+            return
+        end
+
+        if not v6 then
+            return
+        end
+
+        local v73 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("CheckInterractable")
+        if not (v73 and v73:GetAttribute("isRepairing")) then
+            if v6 then
+                if v10 then
+                    return
+                end
+
+                v10 = true
+                if v7 then
+                    v7:Cancel()
+                    v7 = nil
+                end
+
+                v6 = false
+                PlayerGui.Visible = false
+                Line.Rotation = 0
+                Goal.Rotation = 0
+                SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                if v21 then
+                    v21:Disconnect()
+                    v21 = nil
+                end
+
+                if v22 then
+                    v22:Disconnect()
+                    v22 = nil
+                end
+
+                if v23 then
+                    v23:Disconnect()
+                    v23 = nil
+                end
+
+                if v24 then
+                    v24:Disconnect()
+                    v24 = nil
+                end
+            end
+
+            return
+        end
+
+        v11 = true
+        PlayerGui.Visible = true
+        Goal.Rotation = math.random(0, 200)
+        tweenLineRotation()
+    end)
+end)
+UserInputService.InputBegan:Connect(function(a0, a1) --[[ Upvalues: v2 (copy), v6 (ref), v13 (ref), Line (copy), Goal (copy), v14 (ref), endScourgeMode (copy), v17 (ref), startScourgeSpin (copy), KingScourgeHit (copy), v16 (ref), v12 (ref), Parent (copy), v1 (copy), Great (copy), Confirm (copy), handleSkillCheck (copy) ]]
+    if a1 then
+        return
+    end
+
+    if not v2.matches("skillcheck", a0) then
+        return
+    end
+
+    if not v6 then
+        return
+    end
+
+    if v13 then
+        local Rotation1 = Line.Rotation
+        local v74 = 102 + Goal.Rotation
+        local v75 = 116 + Goal.Rotation
+        local v76 = 159 + Goal.Rotation
+
+        local function advanceZone() --[[ Upvalues: v14 (upvalue), endScourgeMode (upvalue), Goal (upvalue), Line (upvalue), v17 (upvalue), startScourgeSpin (upvalue) ]]
+            v14 = v14 - 1
+            if v14 <= 0 then
+                endScourgeMode()
+                return true
+            end
+
+            Goal.Rotation = Line.Rotation + math.random(135, 225) - 130.5
+            if v17 then
+                v17:Cancel()
+                v17 = nil
+            end
+
+            startScourgeSpin()
+            return false
+        end
+
+        if v74 <= Rotation1 and Rotation1 <= v75 then
+            KingScourgeHit:FireServer(v16, "success", v12, Parent)
+            v1.restart(Great)
+            v14 = v14 - 1
+            local v77
+            if v14 <= 0 then
+                endScourgeMode()
+                v77 = true
+            else
+                Goal.Rotation = Line.Rotation + math.random(135, 225) - 130.5
+                if v17 then
+                    v17:Cancel()
+                    v17 = nil
+                end
+
+                startScourgeSpin()
+                v77 = false
+            end
+
+            if v77 then
+                return
+                return
+                -- branch continues at 175
+            end
+        end
+
+        if v75 < Rotation1 and Rotation1 <= v76 then
+            KingScourgeHit:FireServer(v16, "neutral", v12, Parent)
+            v1.restart(Confirm)
+            v14 = v14 - 1
+            local v78
+            if v14 <= 0 then
+                endScourgeMode()
+                v78 = true
+            else
+                Goal.Rotation = Line.Rotation + math.random(135, 225) - 130.5
+                if v17 then
+                    v17:Cancel()
+                    v17 = nil
+                end
+
+                startScourgeSpin()
+                v78 = false
+            end
+
+            if v78 then
+                return
+                return
+                -- branch continues at 175
+            end
+        end
+
+        KingScourgeHit:FireServer(v16, "fail", v12, Parent)
+        endScourgeMode()
+        return
+    end
+
+    handleSkillCheck("success")
+end)
+UserInputService.InputEnded:Connect(function(a0, a1) --[[ Upvalues: v2 (copy), v6 (ref), v3 (copy), v11 (ref), v10 (ref), v7 (ref), PlayerGui (copy), Line (copy), Goal (copy), SkillCheckResultEvent (copy), v8 (ref), v9 (ref), v5 (ref), Parent (copy), v21 (ref), v22 (ref), v23 (ref), v24 (ref), Frame (copy), LocalPlayer (copy) ]]
+    if a1 then
+        return
+    end
+
+    if v2.matches("interact", a0) then
+        if v6 then
+            if not v3 then
+                if not v11 then
+                    if v6 then
+                        if v10 then
+                            return
+                        end
+
+                        v10 = true
+                        if v7 then
+                            v7:Cancel()
+                            v7 = nil
+                        end
+
+                        v6 = false
+                        PlayerGui.Visible = false
+                        Line.Rotation = 0
+                        Goal.Rotation = 0
+                        SkillCheckResultEvent:FireServer("neutral", 0, v8, v9, v5, Parent)
+                        if v21 then
+                            v21:Disconnect()
+                            v21 = nil
+                        end
+
+                        if v22 then
+                            v22:Disconnect()
+                            v22 = nil
+                        end
+
+                        if v23 then
+                            v23:Disconnect()
+                            v23 = nil
+                        end
+
+                        if v24 then
+                            v24:Disconnect()
+                            v24 = nil
+                            return
+                            -- branch continues at 185
+                        end
+
+                        -- branch continues at 185
+                    end
+                end
+
+                if v6 then
+                    if v10 then
+                        return
+                    end
+
+                    v10 = true
+                    if v7 then
+                        v7:Cancel()
+                        v7 = nil
+                    end
+
+                    local v79 = v5
+                    task.delay(0.1, function() --[[ Upvalues: v5 (upvalue), v79 (copy), v6 (upvalue), PlayerGui (upvalue), Line (upvalue), Goal (upvalue) ]]
+                        if v5 ~= v79 then
+                            return
+                        end
+
+                        v6 = false
+                        PlayerGui.Visible = false
+                        Line.Rotation = 0
+                        Goal.Rotation = 0
+                    end)
+                    Frame.Visible = false
+                    SkillCheckResultEvent:FireServer("fail", -10, v8, v9, v5, Parent)
+                    LocalPlayer.Character.CheckInterractable:SetAttribute("isRepairing", false)
+                    if v21 then
+                        v21:Disconnect()
+                        v21 = nil
+                    end
+
+                    if v22 then
+                        v22:Disconnect()
+                        v22 = nil
+                    end
+
+                    if v23 then
+                        v23:Disconnect()
+                        v23 = nil
+                    end
+
+                    if v24 then
+                        v24:Disconnect()
+                        v24 = nil
+                    end
+           end
+            end
+        end
+    end
+
+end)
+
+Path: game:GetService("Players").Dooooohaaaaaaa.PlayerGui.ProgressPromptGui.ProgressSmoother
+
+local RunService = game:GetService("RunService")
+local Frame = script.Parent:WaitForChild("Frame")
+local fullbar = Frame:WaitForChild("fullbar")
+local UIGradient = fullbar:WaitForChild("UIGradient")
+local smoothedbar = Frame:FindFirstChild("smoothedbar")
+if smoothedbar then
+    smoothedbar:Destroy()
+end
+
+local v1 = fullbar:Clone()
+v1.Name = "smoothedbar"
+v1.Visible = true
+v1.Parent = Frame
+local UIGradient1 = v1:WaitForChild("UIGradient")
+fullbar.Visible = false
+local Offset = UIGradient.Offset
+local v2 = Offset
+local v3 = Offset
+local v4 = 0
+local v5 = 0
+local v6 = 0.1
+local v7 = nil
+
+local function nearlyEqual(a0, a1)
+    local v8 = false
+    local v9 = math.abs(a0.X - a1.X)
+    if v9 <= 1e-05 then
+        local v10 = math.abs(a0.Y - a1.Y)
+        v8 = v10 <= 1e-05
+    end
+
+    return v8
+end
+
+local function isEndpoint(a0)
+    local v11 = true
+    if a0.X > -0.804 then
+        v11 = -0.107 <= a0.X
+    end
+
+    return v11
+end
+
+local function snapTo(a0) --[[ Upvalues: Offset (ref), v2 (ref), v3 (ref), v5 (ref), UIGradient1 (copy) ]]
+    Offset = a0
+    v2 = a0
+    v3 = a0
+    v5 = 0
+    UIGradient1.Offset = a0
+end
+
+local function resetTiming() --[[ Upvalues: v6 (ref), v7 (ref) ]]
+    v6 = 0.1
+    v7 = nil
+end
+
+local v12 = UIGradient:GetPropertyChangedSignal("Offset")
+local v13 = Offset
+v12:Connect(function() --[[ Upvalues: UIGradient (copy), v13 (ref), v7 (ref), Frame (copy), Offset (ref), v2 (ref), v3 (ref), v5 (ref), UIGradient1 (copy), v6 (ref), v4 (ref) ]]
+    local Offset1 = UIGradient.Offset
+    local v14 = v13
+    local v15 = false
+    local v16 = math.abs(Offset1.X - v14.X)
+    if v16 <= 1e-05 then
+        local v17 = math.abs(Offset1.Y - v14.Y)
+        v15 = v17 <= 1e-05
+    end
+
+    if v15 then
+        return
+    end
+
+    local v18 = os.clock()
+    v7 = v18
+    v13 = Offset1
+    if Frame.Visible then
+        local v20 = true
+        if Offset1.X > -0.804 then
+            v20 = -0.107 <= Offset1.X
+        end
+
+        if not v20 then
+            -- jump to 72
+        end
+    end
+
+    Offset = Offset1
+    v2 = Offset1
+    v3 = Offset1
+    v5 = 0
+    UIGradient1.Offset = Offset1
+    return
+    if (v7 and v18 - v7 or nil) and (v7 and v18 - v7 or nil) <= 0.04 then
+        Offset = Offset1
+        v2 = Offset1
+        v3 = Offset1
+        v5 = 0
+        UIGradient1.Offset = Offset1
+        return
+    end
+
+    if v7 and v18 - v7 or nil then
+        local v21 = math.clamp(v7 and v18 - v7 or nil, 0.05, 0.3)
+        v6 = v6 + (v21 - v6) * 0.4
+    end
+
+    v2 = Offset
+    v3 = Offset1
+    v4 = v18
+    v5 = math.clamp(v6, 0.05, 0.3)
+end)
+local v22 = Frame:GetPropertyChangedSignal("Visible")
+v22:Connect(function() --[[ Upvalues: UIGradient (copy), Offset (ref), v2 (ref), v3 (ref), v5 (ref), UIGradient1 (copy), v6 (ref), v7 (ref) ]]
+    local Offset2 = UIGradient.Offset
+    Offset = Offset2
+    v2 = Offset2
+    v3 = Offset2
+    v5 = 0
+    UIGradient1.Offset = Offset2
+    v6 = 0.1
+    v7 = nil
+end)
+RunService.RenderStepped:Connect(function() --[[ Upvalues: Frame (copy), v5 (ref), v4 (ref), Offset (ref), v2 (ref), v3 (ref), UIGradient1 (copy) ]]
+    if not Frame.Visible or v5 <= 0 then
+        return
+    end
+
+    local v23 = os.clock() - v4
+    local v24 = v23 / v5
+    local v25 = math.clamp(v24, 0, 1)
+    Offset = v2:Lerp(v3, v25)
+    UIGradient1.Offset = Offset
+    if 1 <= v25 then
+        v5 = 0
+        Offset = v3
+    end
+
+end)
+script.Destroying:Connect(function() --[[ Upvalues: v1 (copy), fullbar (copy) ]]
+    if v1.Parent then
+        v1:Destroy()
+    end
+
+    if fullbar.Parent then
+        fullbar.Visible = true
+    end
+
+end)
+
+Path: game:GetService("Players").Dooooohaaaaaaa.PlayerGui.SkillCheckPromptGui.SkillCheckKeyIcon
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Modules = ReplicatedStorage:WaitForChild("Modules")
+local Survivors = Modules:WaitForChild("Survivors")
+local KeybindsConfig = Survivors:WaitForChild("KeybindsConfig")
+Players = require(KeybindsConfig)
+local Space = script.Parent:WaitForChild("Check"):WaitForChild("Space")
+local v1 = UDim2.fromScale(0.49, 0.47)
+local Image = Space.Image
+local Size = Space.Size
+local ImageTransparency = Space.ImageTransparency
+local v2 = Space:FindFirstChildOfClass("UIAspectRatioConstraint")
+local v4 = {
+    LeftControl = "Ctrl",
+    RightControl = "Ctrl",
+    LeftShift = "Shift",
+    RightShift = "Shift",
+    LeftAlt = "Alt",
+    RightAlt = "Alt"
+}
+
+local function shortLabel(a0) --[[ Upvalues: v4 (copy) ]]
+    local v7 = v4[a0] or a0:upper()
+    return v7
+end
+
+local function ensureKeyLabel() --[[ Upvalues: Space (copy), v1 (copy) ]]
+    local key = Space:FindFirstChild("key")
+    if not key then
+        key = Instance.new("TextLabel")
+        key.Name = "key"
+        key.BackgroundTransparency = 1
+        key.TextScaled = true
+        key.FontFace = Font.new("rbxassetid://12187377099", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        key.TextColor3 = Color3.fromRGB(255, 255, 255)
+        key.Parent = Space
+    end
+
+    key.AnchorPoint = Vector2.new(0.5, 0.5)
+    key.Position = v1
+    key.Size = UDim2.fromScale(0.85, 0.85)
+    key.ZIndex = Space.ZIndex + 1
+    return key
+end
+
+local v8 = v2 and v2.AspectRatio or nil
+
+local function refresh() --[[ Upvalues: UserInputService (copy), Space (copy), Players (copy), ensureKeyLabel (copy), Image (copy), ImageTransparency (copy), v2 (copy), v8 (copy), Size (copy), v4 (copy) ]]
+    local v10 = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    if v10 then
+        Space.Visible = false
+        local key1 = Space:FindFirstChild("key")
+        if key1 then
+            key1.Visible = false
+        end
+
+        return
+    end
+
+    Space.Visible = true
+    local v11 = Players.getRaw("skillcheck")
+    local v12 = ensureKeyLabel()
+    if v11 == "Space" then
+        Space.Image = Image
+        Space.ImageTransparency = ImageTransparency
+        if v2 and v8 then
+            v2.AspectRatio = v8
+        end
+
+        Space.Size = Size
+        v12.Visible = false
+        return
+    end
+
+    if v11 == "MouseButton1" then
+        Space.Image = "rbxassetid://123571635310131"
+        Space.ImageTransparency = ImageTransparency
+        if v2 then
+            v2.AspectRatio = 1
+        end
+
+        Space.Size = UDim2.fromScale(0.2, 0.2)
+        v12.Visible = false
+        return
+    end
+
+    if v11 == "MouseButton2" then
+        Space.Image = "rbxassetid://95375588266919"
+        Space.ImageTransparency = ImageTransparency
+        if v2 then
+            v2.AspectRatio = 1
+        end
+
+        Space.Size = UDim2.fromScale(0.2, 0.2)
+        v12.Visible = false
+        return
+    end
+
+    local v15 = v4[v11] or v11:upper()
+    local v16 = (#v15 - 1) * 0.12 + 1
+    local v17 = #v15 - 4
+    local v18 = v16 + math.max(v17, 0) * 0.16
+    local v19 = math.clamp(v18, 1, 1.9)
+    v18 = v19 * 0.4
+    Space.Image = "rbxassetid://117799511751751"
+    Space.ImageTransparency = ImageTransparency
+    if v2 then
+        v2.AspectRatio = v19
+    end
+
+    Space.Size = UDim2.fromScale(v18 * 0.3, v18 / v19 * 0.3)
+    v12.Text = v15
+    local v21
+    if not (1 < #v15 and UDim2.fromScale(0.8, 0.9)) then
+        local v22 = UDim2.fromScale(0.85, 0.85)
+    end
+
+    v12.Size = v21
+    v12.Visible = true
+end
+
+refresh()
+local v23 = LocalPlayer:GetAttributeChangedSignal(Players.ATTR.skillcheck)
+v23:Connect(refresh)
+
+{
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.SkillCheckKeyIcon,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Circle,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Goal,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Line,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Shadow,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Space,
+	game:GetService("Players").LocalPlayer.PlayerGui.SkillCheckPromptGui.Check.Space.key,
+}
+
+
+Path: game:GetService("Workspace").Dooooohaaaaaaa.ProgressBar
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local ProgressPromptGui = PlayerGui:WaitForChild("ProgressPromptGui")
+local v1 = ProgressPromptGui:GetDescendants()
+for k1, k2 in ipairs(v1) do
+    if k2:IsA("ImageLabel") and k2:GetAttribute("BaseTransparency") == nil then
+        k2:SetAttribute("BaseTransparency", k2.ImageTransparency)
+    end
+end
+
+local Frame = ProgressPromptGui:WaitForChild("Frame")
+ProgressPromptGui = Frame:WaitForChild("fullbar")
+local TextLabel = Frame:WaitForChild("TextLabel")
+local Help = Frame:WaitForChild("Help")
+local UIGradient = ProgressPromptGui:WaitForChild("UIGradient")
+local v5 = false
+local v6 = 0
+ProgressPromptGui = ReplicatedStorage.Remotes.Progress:WaitForChild("ProgressUpdateEvent")
+local ProgressBindable = ReplicatedStorage.Remotes.Progress:WaitForChild("ProgressBindable")
+
+local function setImageLabelsTransparency(a0, a1)
+    local v7 = a0:GetDescendants()
+    for k3, k4 in ipairs(v7) do
+        if k4:IsA("ImageLabel") then
+            local v11 = k4:GetAttribute("BaseTransparency") or 0
+            k4.ImageTransparency = v11 + (1 - v11) * a1
+        end
+    end
+end
+
+ProgressPromptGui.OnClientEvent:Connect(function(a0, a1, a2) --[[ Upvalues: Frame (copy), v6 (ref), v5 (ref), TextLabel (copy), setImageLabelsTransparency (copy), UIGradient (copy) ]]
+    if a2 == false then
+        Frame.Visible = false
+        return
+    end
+
+    v6 = os.clock()
+    v5 = false
+    TextLabel.Text = a1
+    TextLabel.TextTransparency = 0
+    setImageLabelsTransparency(Frame, 0)
+    Frame.Visible = true
+    local v12 = math.clamp(a0 / 100, 0, 1)
+    local v13 = v12 * 0.703 + -0.807
+    UIGradient.Offset = Vector2.new(v13, 0)
+end)
+local v14 = LocalPlayer.Character:GetAttributeChangedSignal("anticamp")
+v14:Connect(function() --[[ Upvalues: LocalPlayer (copy), Frame (copy) ]]
+    if LocalPlayer.Character:GetAttribute("anticamp") then
+        return
+    end
+
+    Frame.Visible = false
+end)
+local v15 = LocalPlayer.Character:GetAttributeChangedSignal("anticampCharge")
+v15:Connect(function() --[[ Upvalues: TextLabel (copy), v5 (ref), Frame (copy), LocalPlayer (copy), UIGradient (copy) ]]
+    TextLabel.Text = "ANTI CAMP"
+    v5 = false
+    Frame.Visible = true
+    local v16 = LocalPlayer.Character:GetAttribute("anticampCharge") / 100
+    local v17 = math.clamp(v16, 0, 1)
+    local v18 = v17 * 0.703 + -0.807
+    UIGradient.Offset = Vector2.new(v18, 0)
+end)
+
+local function updateGuiBasedOnAttributes() --[[ Upvalues: LocalPlayer (copy), Help (copy), TextLabel (copy), setImageLabelsTransparency (copy), Frame (copy), v5 (ref), UIGradient (copy) ]]
+    local v20 = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local Humanoid = v20:FindFirstChild("Humanoid")
+    local v21 = v20:GetAttribute("IsBeingHealed")
+    local CheckInterractable = v20:WaitForChild("CheckInterractable")
+    local v22 = CheckInterractable:GetAttribute("isHealing")
+    local CheckInterractable1 = v20:WaitForChild("CheckInterractable")
+    local v23 = CheckInterractable1:GetAttribute("isRepairing")
+    local v24 = v20:GetAttribute("IsCarried")
+    local v25 = v20:GetAttribute("RemainingCarryTime") or 0
+    local v26 = v20:GetAttribute("HealProgress")
+    if Humanoid then
+        Help.Visible = false
+        if v24 and not v20:GetAttribute("Locked") then
+            TextLabel.Text = "WIGGLE"
+            TextLabel.TextTransparency = 0
+            setImageLabelsTransparency(Frame, 0)
+            v5 = false
+            Frame.Visible = true
+            local v27 = (16 - v25) / 16
+            local v28 = math.clamp(v27, 0, 1)
+            local v29 = v28 * 0.703 + -0.807
+            UIGradient.Offset = Vector2.new(v29, 0)
+            return
+        end
+
+        if v21 then
+            TextLabel.Text = "RECOVERING"
+            TextLabel.TextTransparency = 0
+            setImageLabelsTransparency(Frame, 0)
+            v5 = false
+            Frame.Visible = true
+            if v26 then
+                local v30 = math.clamp(v26 / 100, 0, 1)
+                local v31 = v30 * 0.703 + -0.807
+                UIGradient.Offset = Vector2.new(v31, 0)
+                if 93 <= v26 then
+                    Help.Visible = true
+                    return
+                    -- branch continues at 228
+                end
+
+                -- branch continues at 228
+            end
+        end
+
+        local v32 = Humanoid.Health / Humanoid.MaxHealth
+        if v32 < 0.5 and not v20:GetAttribute("IsHooked") then
+            TextLabel.Text = "RECOVER"
+            TextLabel.TextTransparency = 0.5
+            setImageLabelsTransparency(Frame, 0.5)
+            v5 = false
+            Frame.Visible = true
+            if v26 then
+                local v33 = math.clamp(v26 / 100, 0, 1)
+                local v34 = v33 * 0.703 + -0.807
+                UIGradient.Offset = Vector2.new(v34, 0)
+                if 93 <= v26 then
+                    Help.Visible = true
+                    return
+                    -- branch continues at 228
+                end
+            end
+
+            UIGradient.Offset = Vector2.new(-0.807, 0)
+            return
+        end
+
+        if not v22 and not v23 then
+            Frame.Visible = false
+        end
+    end
+end
+
+local function setupCharacterAttributes(a0) --[[ Upvalues: updateGuiBasedOnAttributes (copy) ]]
+    local v35 = a0:WaitForChild("Humanoid"):GetPropertyChangedSignal("Health")
+    v35:Connect(updateGuiBasedOnAttributes)
+    local v36 = a0:GetAttributeChangedSignal("IsCarried")
+    v36:Connect(updateGuiBasedOnAttributes)
+    local v37 = a0:GetAttributeChangedSignal("IsBeingHealed")
+    v37:Connect(updateGuiBasedOnAttributes)
+    local v38 = a0:GetAttributeChangedSignal("RemainingCarryTime")
+    v38:Connect(updateGuiBasedOnAttributes)
+    local v39 = a0:GetAttributeChangedSignal("HealProgress")
+    v39:Connect(updateGuiBasedOnAttributes)
+    updateGuiBasedOnAttributes()
+end
+
+LocalPlayer.CharacterAdded:Connect(function(a0) --[[ Upvalues: setupCharacterAttributes (copy) ]]
+    setupCharacterAttributes(a0)
+end)
+if LocalPlayer.Character then
+    setupCharacterAttributes(LocalPlayer.Character)
+end
+
+local CollectionService = game:GetService("CollectionService")
+local GeneratorRepair = PlayerGui:WaitForChild("pcprompts").Frame:WaitForChild("GeneratorRepair")
+local Exit = PlayerGui:WaitForChild("pcprompts").Frame:WaitForChild("Exit")
+
+local function nearestTaggedProgress(a0, a1) --[[ Upvalues: LocalPlayer (copy), CollectionService (copy) ]]
+    local Character1 = LocalPlayer.Character
+    local v41 = Character1 and Character1:FindFirstChild("HumanoidRootPart")
+    if not v41 then
+        return nil
+    end
+
+    local v42 = nil
+    local v43 = nil
+    for k5, k6 in ipairs(a0) do
+        local v47 = CollectionService:GetTagged(k6)
+        for k7, k8 in ipairs(v47) do
+            if k8:IsDescendantOf(workspace) then
+                local v51 = nil
+                if k8:IsA("BasePart") then
+                    v51 = k8.Position
+                else
+                    if k8:IsA("Model") then
+                        local v52 = k8.PrimaryPart or k8:FindFirstChild("HitBox")
+                        local v54 = v52 and v52.Position
+                        v51 = v54
+                    end
+                end
+
+                if v51 then
+                    local Magnitude = (v51 - v41.Position).Magnitude
+                    if not v43 or Magnitude < v43 then
+                        v42 = k8
+                        v43 = Magnitude
+                    end
+                end
+            end
+        end
+    end
+
+    if not v42 then
+        return nil
+    end
+
+    local v55 = v42:GetAttribute(a1)
+    return v55, v43
+end
+
+local function nearestGenProgress() --[[ Upvalues: nearestTaggedProgress (copy) ]]
+    local v56 = {"Generator"}
+    local v57 = nearestTaggedProgress(v56, "RepairProgress")
+    return v57
+end
+
+local function isBusyForProximity(a0) --[[ Upvalues: LocalPlayer (copy) ]]
+    local Character2 = LocalPlayer.Character
+    if not Character2 then
+        return true
+    end
+
+    local CheckInterractable2 = Character2:FindFirstChild("CheckInterractable")
+    local Humanoid1 = Character2:FindFirstChild("Humanoid")
+    if Character2:GetAttribute("IsCarried") == true then
+        return true
+    end
+
+    if Character2:GetAttribute("IsBeingHealed") == true then
+        return true
+    end
+
+    if Character2:GetAttribute("IsHooked") == true then
+        return true
+    end
+
+    if Humanoid1 ~= nil then
+        local v58 = Humanoid1.Health / Humanoid1.MaxHealth
+        if v58 < 0.5 then
+            return true
+        end
+    end
+
+    if a0 then
+        return false
+    end
+
+    local v59 = CheckInterractable2
+    if v59 then
+        local v64 = CheckInterractable2:GetAttribute("isHealing") or CheckInterractable2:GetAttribute("isRepairing") or CheckInterractable2:GetAttribute("isExiting")
+    end
+
+    return v59 == true
+end
+
+local function isActionLive() --[[ Upvalues: v6 (ref) ]]
+    local v65 = os.clock() - v6
+    return v65 < 0.4
+end
+
+local v66 = nil
+local v67 = 0
+local v68 = nil
+local v69 = 0
+
+local function applyProximityDisplay(a0, a1) --[[ Upvalues: v66 (ref), v5 (ref), TextLabel (copy), setImageLabelsTransparency (copy), Frame (copy), UIGradient (copy) ]]
+    v66 = a0
+    v5 = true
+    TextLabel.Text = a0
+    TextLabel.TextTransparency = 0.5
+    setImageLabelsTransparency(Frame, 0.5)
+    Frame.Visible = true
+    local v70 = math.clamp(a1 / 100, 0, 1) * 0.703 + -0.807
+    UIGradient.Offset = Vector2.new(v70, 0)
+end
+
+local function proximityProgressFor(a0) --[[ Upvalues: nearestTaggedProgress (copy), nearestGenProgress (copy) ]]
+    if a0 == "OPEN" then
+        local v71 = {"ExitPoint", "ExitPointInUse"}
+        local v72 = nearestTaggedProgress(v71, "ActivationProgress")
+        return v72
+    end
+
+    local v73 = nearestGenProgress()
+    return v73
+end
+
+local function hideOwnedFrame() --[[ Upvalues: v5 (ref), v68 (ref), v69 (ref), Frame (copy) ]]
+    v5 = false
+    v68 = nil
+    v69 = os.clock()
+    Frame.Visible = false
+end
+
+local function tryShowProximity() --[[ Upvalues: isBusyForProximity (copy), v6 (ref), GeneratorRepair (copy), nearestTaggedProgress (copy), Exit (copy), v66 (ref), v5 (ref), TextLabel (copy), setImageLabelsTransparency (copy), Frame (copy), UIGradient (copy) ]]
+    if isBusyForProximity(true) then
+        return false
+    end
+
+    local v74 = os.clock() - v6
+    if v74 < 0.4 then
+        return false
+    end
+
+    local v75 = nil
+    v74 = nil
+    if GeneratorRepair.Visible then
+        v75 = "REPAIR"
+        local v76 = {"Generator"}
+        local v77 = nearestTaggedProgress(v76, "RepairProgress")
+    else
+        if Exit.Visible then
+            v75 = "OPEN"
+            local v78 = {"ExitPoint", "ExitPointInUse"}
+            v74 = nearestTaggedProgress(v78, "ActivationProgress")
+        end
+    end
+
+    if v74 then
+        v66 = v75
+        v5 = true
+        TextLabel.Text = v75
+        TextLabel.TextTransparency = 0.5
+        setImageLabelsTransparency(Frame, 0.5)
+        Frame.Visible = true
+        local v79 = math.clamp(v74 / 100, 0, 1) * 0.703 + -0.807
+        UIGradient.Offset = Vector2.new(v79, 0)
+        return true
+    end
+
+    return false
+end
+
+local v80 = Frame:GetPropertyChangedSignal("Visible")
+v80:Connect(function() --[[ Upvalues: Frame (copy), v69 (ref), isBusyForProximity (copy), v67 (ref), tryShowProximity (copy), v66 (ref), nearestTaggedProgress (copy), v5 (ref), TextLabel (copy), setImageLabelsTransparency (copy), UIGradient (copy) ]]
+    if Frame.Visible then
+        return
+    end
+
+    local v81 = os.clock() - v69
+    if v81 < 0.05 then
+        return
+    end
+
+    if isBusyForProximity(true) then
+        return
+    end
+
+    v67 = os.clock() + 0.5
+    if tryShowProximity() then
+        return
+    end
+
+    if v66 then
+        local v82, v83
+        if v66 == "OPEN" then
+            local v84 = {"ExitPoint", "ExitPointInUse"}
+            local v85, v86 = nearestTaggedProgress(v84, "ActivationProgress")
+            v82 = v85
+            v83 = v86
+        else
+            local v87 = {"Generator"}
+            local v88, v89 = nearestTaggedProgress(v87, "RepairProgress")
+            v82 = v88
+            v83 = v89
+        end
+
+        if v82 and v82 < 100 and v83 and v83 < 12 then
+            local v90 = v66
+            v66 = v90
+            v5 = true
+            TextLabel.Text = v90
+            TextLabel.TextTransparency = 0.5
+            setImageLabelsTransparency(Frame, 0.5)
+            Frame.Visible = true
+            local v91 = math.clamp(v82 / 100, 0, 1) * 0.703 + -0.807
+            UIGradient.Offset = Vector2.new(v91, 0)
+        end
+    end
+
+end)
+
+local function reconcileProximity() --[[ Upvalues: isBusyForProximity (copy), v6 (ref), v5 (ref), Frame (copy), v66 (ref), nearestTaggedProgress (copy), v68 (ref), v69 (ref), tryShowProximity (copy), v67 (ref), TextLabel (copy), setImageLabelsTransparency (copy), UIGradient (copy) ]]
+    if not isBusyForProximity(true) then
+        local v92 = os.clock() - v6
+        if not (v92 < 0.4) then
+            -- jump to 72
+        end
+    end
+
+    if v5 then
+        if Frame.Visible then
+            if v66 then
+                local v93
+                if v66 == "OPEN" then
+                    local v94 = {"ExitPoint", "ExitPointInUse"}
+                    local v95, v96 = nearestTaggedProgress(v94, "ActivationProgress")
+                    v93 = v96
+                else
+                    local v97 = {"Generator"}
+                    local v98, v99 = nearestTaggedProgress(v97, "RepairProgress")
+                    v93 = v99
+                end
+
+                if not v93 or v93 >= 12 then
+                    v5 = false
+                    v68 = nil
+                    v69 = os.clock()
+                    Frame.Visible = false
+                end
+            end
+        end
+    end
+
+    v68 = nil
+    return
+    if tryShowProximity() then
+        v68 = nil
+        return
+    end
+
+    if os.clock() < v67 then
+        if v66 then
+            local v100, v101
+            if v66 == "OPEN" then
+                local v102 = {"ExitPoint", "ExitPointInUse"}
+                local v103, v104 = nearestTaggedProgress(v102, "ActivationProgress")
+                v100 = v103
+                v101 = v104
+            else
+                local v105 = {"Generator"}
+                local v106, v107 = nearestTaggedProgress(v105, "RepairProgress")
+                v100 = v106
+                v101 = v107
+            end
+
+            if v100 and v100 < 100 and v101 and v101 < 12 then
+                local v108 = v66
+                v66 = v108
+                v5 = true
+                TextLabel.Text = v108
+                TextLabel.TextTransparency = 0.5
+                setImageLabelsTransparency(Frame, 0.5)
+                Frame.Visible = true
+                local v109 = math.clamp(v100 / 100, 0, 1) * 0.703 + -0.807
+                UIGradient.Offset = Vector2.new(v109, 0)
+                v68 = nil
+                return
+            end
+        end
+    end
+
+    if v5 then
+        if Frame.Visible then
+            local v110 = nil
+            local v111 = nil
+            if v66 then
+                local v112, v113
+                if v66 == "OPEN" then
+                    local v114 = {"ExitPoint", "ExitPointInUse"}
+                    local v115, v116 = nearestTaggedProgress(v114, "ActivationProgress")
+                    v112 = v115
+                    v113 = v116
+                else
+                    local v117 = {"Generator"}
+                    local v118, v119 = nearestTaggedProgress(v117, "RepairProgress")
+                    v112 = v118
+                    v113 = v119
+                end
+
+                v110 = v112
+                v111 = v113
+            end
+
+            local v120 = false
+            if v110 ~= nil then
+                v120 = false
+                if v111 ~= nil then
+                    v120 = v111 < 12
+                end
+            end
+
+            if isBusyForProximity() and v120 then
+                v68 = nil
+                return
+            end
+
+            v111 = true
+            if os.clock() >= v67 then
+                local v121 = os.clock() - v6
+                v111 = v121 < 0.8
+            end
+
+            if not (v111 and v120) then
+                v5 = false
+                v68 = nil
+                v69 = os.clock()
+                Frame.Visible = false
+                return
+            end
+
+            local v124 = v68 or os.clock()
+            v68 = v124
+            v124 = os.clock() - v68
+            if 0.2 <= v124 then
+                v5 = false
+                v68 = nil
+                v69 = os.clock()
+                Frame.Visible = false
+                return
+                -- branch continues at 288
+            end
+        end
+    end
+
+    v68 = nil
+end
+
+local v125 = GeneratorRepair:GetPropertyChangedSignal("Visible")
+v125:Connect(reconcileProximity)
+local v126 = Exit:GetPropertyChangedSignal("Visible")
+v126:Connect(reconcileProximity)
+task.spawn(function() --[[ Upvalues: reconcileProximity (copy) ]]
+    while true do
+        task.wait(0.1)
+        reconcileProximity()
+    end
+
+end)
